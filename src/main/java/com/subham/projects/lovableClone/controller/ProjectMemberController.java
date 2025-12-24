@@ -1,9 +1,9 @@
 package com.subham.projects.lovableClone.controller;
 
-import com.codingshuttle.projects.lovable_clone.dto.member.InviteMemberRequest;
-import com.codingshuttle.projects.lovable_clone.dto.member.MemberResponse;
-import com.codingshuttle.projects.lovable_clone.entity.ProjectMember;
-import com.codingshuttle.projects.lovable_clone.service.ProjectMemberService;
+import com.subham.projects.lovableClone.dto.member.InviteMemberRequest;
+import com.subham.projects.lovableClone.dto.member.MemberResponse;
+import com.subham.projects.lovableClone.entity.ProjectMember;
+import com.subham.projects.lovableClone.service.ProjectMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,10 +13,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/projects/{projectId}/members")
-@RequiredArgsConstructor
 public class ProjectMemberController {
 
     private final ProjectMemberService projectMemberService;
+
+    public ProjectMemberController(ProjectMemberService projectMemberService) {
+        this.projectMemberService = projectMemberService;
+    }
 
     @GetMapping
     public ResponseEntity<List<ProjectMember>> getProjectMembers(@PathVariable Long projectId) {

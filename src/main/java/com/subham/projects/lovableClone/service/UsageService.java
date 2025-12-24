@@ -1,6 +1,7 @@
 package com.subham.projects.lovableClone.service;
 
-import com.codingshuttle.projects.lovable_clone.dto.subscription.UsageTodayResponse;
+import com.subham.projects.lovableClone.dto.subscription.PlanLimitsResponse;
+import com.subham.projects.lovableClone.dto.subscription.UsageTodayResponse;
 
 public interface UsageService {
      UsageTodayResponse getTodayUsageOfUser(Long userId);

@@ -1,7 +1,7 @@
 package com.subham.projects.lovableClone.service;
 
-import com.codingshuttle.projects.lovable_clone.dto.project.FileContentResponse;
-import com.codingshuttle.projects.lovable_clone.dto.project.FileNode;
+import com.subham.projects.lovableClone.dto.project.FileContentResponse;
+import com.subham.projects.lovableClone.dto.project.FileNode;
 
 import java.util.List;
 

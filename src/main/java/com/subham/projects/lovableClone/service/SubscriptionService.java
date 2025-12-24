@@ -1,9 +1,9 @@
 package com.subham.projects.lovableClone.service;
 
-import com.codingshuttle.projects.lovable_clone.dto.subscription.CheckoutRequest;
-import com.codingshuttle.projects.lovable_clone.dto.subscription.CheckoutResponse;
-import com.codingshuttle.projects.lovable_clone.dto.subscription.PortalResponse;
-import com.codingshuttle.projects.lovable_clone.dto.subscription.SubscriptionResponse;
+import com.subham.projects.lovableClone.dto.subscription.CheckoutRequest;
+import com.subham.projects.lovableClone.dto.subscription.CheckoutResponse;
+import com.subham.projects.lovableClone.dto.subscription.PortalResponse;
+import com.subham.projects.lovableClone.dto.subscription.SubscriptionResponse;
 
 public interface SubscriptionService {
     SubscriptionResponse getCurrentSubscription(Long userId);

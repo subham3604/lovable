@@ -1,6 +1,6 @@
 package com.subham.projects.lovableClone.service;
 
-import com.codingshuttle.projects.lovable_clone.dto.subscription.PlanResponse;
+import com.subham.projects.lovableClone.dto.subscription.PlanResponse;
 
 import java.util.List;
 

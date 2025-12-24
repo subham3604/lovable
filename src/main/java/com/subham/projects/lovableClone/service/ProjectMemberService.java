@@ -1,8 +1,8 @@
 package com.subham.projects.lovableClone.service;
 
-import com.codingshuttle.projects.lovable_clone.dto.member.InviteMemberRequest;
-import com.codingshuttle.projects.lovable_clone.dto.member.MemberResponse;
-import com.codingshuttle.projects.lovable_clone.entity.ProjectMember;
+import com.subham.projects.lovableClone.dto.member.InviteMemberRequest;
+import com.subham.projects.lovableClone.dto.member.MemberResponse;
+import com.subham.projects.lovableClone.entity.ProjectMember;
 
 import java.util.List;
 

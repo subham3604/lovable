@@ -1,9 +1,9 @@
 package com.subham.projects.lovableClone.controller;
 
-import com.codingshuttle.projects.lovable_clone.dto.project.ProjectRequest;
-import com.codingshuttle.projects.lovable_clone.dto.project.ProjectResponse;
-import com.codingshuttle.projects.lovable_clone.dto.project.ProjectSummaryResponse;
-import com.codingshuttle.projects.lovable_clone.service.ProjectService;
+import com.subham.projects.lovableClone.dto.project.ProjectRequest;
+import com.subham.projects.lovableClone.dto.project.ProjectResponse;
+import com.subham.projects.lovableClone.dto.project.ProjectSummaryResponse;
+import com.subham.projects.lovableClone.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,10 +13,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/projects")
-@RequiredArgsConstructor
 public class ProjectController {
 
     private final ProjectService projectService;
+
+    public ProjectController(ProjectService projectService) {
+        this.projectService = projectService;
+    }
 
     @GetMapping
     public ResponseEntity<List<ProjectSummaryResponse>> getMyProjects() {

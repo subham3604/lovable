@@ -1,8 +1,8 @@
 package com.subham.projects.lovableClone.controller;
 
-import com.codingshuttle.projects.lovable_clone.dto.subscription.*;
-import com.codingshuttle.projects.lovable_clone.service.PlanService;
-import com.codingshuttle.projects.lovable_clone.service.SubscriptionService;
+import com.subham.projects.lovableClone.dto.subscription.*;
+import com.subham.projects.lovableClone.service.PlanService;
+import com.subham.projects.lovableClone.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,11 +13,15 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequiredArgsConstructor
 public class BillingController {
 
     private final PlanService planService;
     private final SubscriptionService subscriptionService;
+
+    public BillingController(PlanService planService, SubscriptionService subscriptionService) {
+        this.planService = planService;
+        this.subscriptionService = subscriptionService;
+    }
 
     @GetMapping("/api/plans")
     public ResponseEntity<List<PlanResponse>> getAllPlans() {

@@ -1,6 +1,6 @@
 package com.subham.projects.lovableClone.entity;
 
-import com.codingshuttle.projects.lovable_clone.enums.PreviewStatus;
+import com.subham.projects.lovableClone.enums.PreviewStatus;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;

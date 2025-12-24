@@ -1,11 +1,11 @@
 package com.subham.projects.lovableClone.controller;
 
-import com.codingshuttle.projects.lovable_clone.dto.auth.AuthResponse;
-import com.codingshuttle.projects.lovable_clone.dto.auth.LoginRequest;
-import com.codingshuttle.projects.lovable_clone.dto.auth.SignupRequest;
-import com.codingshuttle.projects.lovable_clone.dto.auth.UserProfileResponse;
-import com.codingshuttle.projects.lovable_clone.service.AuthService;
-import com.codingshuttle.projects.lovable_clone.service.UserService;
+import com.subham.projects.lovableClone.dto.auth.AuthResponse;
+import com.subham.projects.lovableClone.dto.auth.LoginRequest;
+import com.subham.projects.lovableClone.dto.auth.SignupRequest;
+import com.subham.projects.lovableClone.dto.auth.UserProfileResponse;
+import com.subham.projects.lovableClone.service.AuthService;
+import com.subham.projects.lovableClone.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

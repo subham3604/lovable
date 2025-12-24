@@ -1,8 +1,8 @@
 package com.subham.projects.lovableClone.service;
 
-import com.codingshuttle.projects.lovable_clone.dto.project.ProjectRequest;
-import com.codingshuttle.projects.lovable_clone.dto.project.ProjectResponse;
-import com.codingshuttle.projects.lovable_clone.dto.project.ProjectSummaryResponse;
+import com.subham.projects.lovableClone.dto.project.ProjectRequest;
+import com.subham.projects.lovableClone.dto.project.ProjectResponse;
+import com.subham.projects.lovableClone.dto.project.ProjectSummaryResponse;
 
 import java.util.List;
 

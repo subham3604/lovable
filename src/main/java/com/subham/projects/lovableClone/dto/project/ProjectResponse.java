@@ -1,6 +1,6 @@
 package com.subham.projects.lovableClone.dto.project;
 
-import com.codingshuttle.projects.lovable_clone.dto.auth.UserProfileResponse;
+import com.subham.projects.lovableClone.dto.auth.UserProfileResponse;
 
 import java.time.Instant;
 
