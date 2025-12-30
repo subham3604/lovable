@@ -13,13 +13,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/projects")
+@RequiredArgsConstructor
 public class ProjectController {
 
     private final ProjectService projectService;
-
-    public ProjectController(ProjectService projectService) {
-        this.projectService = projectService;
-    }
 
     @GetMapping
     public ResponseEntity<List<ProjectSummaryResponse>> getMyProjects() {
@@ -28,9 +25,9 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProjectResponse> getProjectById(@PathVariable Long id) {
+    public ResponseEntity<ProjectResponse> getProjectById(@PathVariable Long projectId) {
         Long userId = 1L;
-        return ResponseEntity.ok(projectService.getUserProjectById(id, userId));
+        return ResponseEntity.ok(projectService.getUserProjectById(projectId, userId));
     }
 
     @PostMapping
