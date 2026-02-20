@@ -13,8 +13,10 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.antlr.v4.runtime.misc.NotNull;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -29,16 +31,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public List<ProjectSummaryResponse> getUserProjects(Long userId) {
-//        return projectRepository.findAllAccessibleByUser(userId)
-//                .stream()
-//                .map(projectMapper::toProjectSummaryResponse)
-//                .toList();
         return projectMapper.toListProjectSummaryResponse(projectRepository.findAllAccessibleByUser(userId));
-    }
-
-    @Override
-    public ProjectResponse getUserProjectById(Long projectId, Long userId) {
-        return null;
     }
 
     @Override
@@ -52,12 +45,33 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponse updateProject(Long id, ProjectRequest request, Long userId) {
-        return null;
+    public ProjectResponse getUserProjectById(Long projectId, Long userId) {
+        Project project = getAccessibleProjectById(projectId, userId);
+        return projectMapper.toProjectResponse(project);
+
+    }
+
+    @Override
+    public ProjectResponse updateProject(Long projectId, ProjectRequest request, Long userId) {
+        Project project = getAccessibleProjectById(projectId, userId);
+        project.setName(request.name());
+        projectRepository.save(project);
+        return projectMapper.toProjectResponse(project);
     }
 
     @Override
     public void softDelete(Long id, Long userId) {
+        Project project = getAccessibleProjectById(id, userId);
+        if(!project.getOwner().getId().equals(userId)){
+            throw new RuntimeException("You are not allowed to delete.");
+        }
+        project.setDeletedAt(Instant.now());
+        projectRepository.save(project);
+    }
 
+
+    // INTERNAL FUNCTIONS
+    private Project getAccessibleProjectById(Long projectId, Long userId){
+        return projectRepository.findAccessibleByProjectId(projectId, userId).orElseThrow();
     }
 }
