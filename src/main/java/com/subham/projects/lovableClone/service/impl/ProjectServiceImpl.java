@@ -4,9 +4,13 @@ import com.subham.projects.lovableClone.dto.project.ProjectRequest;
 import com.subham.projects.lovableClone.dto.project.ProjectResponse;
 import com.subham.projects.lovableClone.dto.project.ProjectSummaryResponse;
 import com.subham.projects.lovableClone.entity.Project;
+import com.subham.projects.lovableClone.entity.ProjectMember;
+import com.subham.projects.lovableClone.entity.ProjectMemberId;
 import com.subham.projects.lovableClone.entity.User;
+import com.subham.projects.lovableClone.enums.ProjectRole;
 import com.subham.projects.lovableClone.error.ResourceNotFoundException;
 import com.subham.projects.lovableClone.mapper.ProjectMapper;
+import com.subham.projects.lovableClone.repository.ProjectMemberRepository;
 import com.subham.projects.lovableClone.repository.ProjectRepository;
 import com.subham.projects.lovableClone.repository.UserRepository;
 import com.subham.projects.lovableClone.service.ProjectService;
@@ -26,6 +30,7 @@ import java.util.List;
 public class ProjectServiceImpl implements ProjectService {
 
     ProjectRepository projectRepository;
+    ProjectMemberRepository projectMemberRepository;
     UserRepository userRepository;
     ProjectMapper projectMapper;
 
@@ -39,9 +44,21 @@ public class ProjectServiceImpl implements ProjectService {
         User owner = userRepository.findById(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User", userId.toString())
         );
-        Project project = Project.builder().name(request.name()).owner(owner).build();
 
+        Project project = Project.builder().name(request.name()).build();
         project = projectRepository.save(project);
+
+        ProjectMemberId projectMemberId = new ProjectMemberId(project.getId(), owner.getId());
+        ProjectMember projectMember = ProjectMember.builder()
+                .id(projectMemberId)
+                .projectRole(ProjectRole.OWNER)
+                .user(owner)
+                .project(project)
+                .invitedAt(Instant.now())
+                .acceptedAt(Instant.now())
+                .build();
+
+        projectMemberRepository.save(projectMember);
 
         return projectMapper.toProjectResponse(project);
     }
@@ -64,9 +81,6 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void softDelete(Long id, Long userId) {
         Project project = getAccessibleProjectById(id, userId);
-        if (!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("You are not allowed to delete.");
-        }
         project.setDeletedAt(Instant.now());
         projectRepository.save(project);
     }
