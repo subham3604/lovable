@@ -7,6 +7,8 @@ import com.subham.projects.lovableClone.entity.Project;
 import com.subham.projects.lovableClone.entity.ProjectMember;
 import com.subham.projects.lovableClone.entity.ProjectMemberId;
 import com.subham.projects.lovableClone.entity.User;
+import com.subham.projects.lovableClone.error.ForbiddenException;
+import com.subham.projects.lovableClone.error.ResourceNotFoundException;
 import com.subham.projects.lovableClone.mapper.ProjectMemberMapper;
 import com.subham.projects.lovableClone.repository.ProjectMemberRepository;
 import com.subham.projects.lovableClone.repository.ProjectRepository;
@@ -48,18 +50,20 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         Project project = getAccessibleProjectById(projectId, userId);
 
         if (!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("Only project owners can invite members.");
+            throw new ForbiddenException("Only project owners can invite members.");
         }
 
-        User invitee = userRepository.findByEmail(request.email()).orElseThrow();
+        User invitee = userRepository.findByEmail(request.email()).orElseThrow(
+                () -> new ResourceNotFoundException("User", request.email())
+        );
 
         if (invitee.getId().equals(userId)) {
-            throw new RuntimeException("You can not invite yourself.");
+            throw new ForbiddenException("You can not invite yourself.");
         }
 
-        ProjectMemberId projectMemberId = new ProjectMemberId(projectId, userId);
+        ProjectMemberId projectMemberId = new ProjectMemberId(projectId, invitee.getId());
         if (projectMemberRepository.existsById(projectMemberId)) {
-            throw new RuntimeException("You can not invite the same user again.");
+            throw new ForbiddenException("User is already a member of this project.");
         }
 
         ProjectMember member = ProjectMember.builder()
@@ -84,7 +88,9 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         }
 
         ProjectMemberId projectMemberId = new ProjectMemberId(projectId, memberId);
-        ProjectMember projectMember = projectMemberRepository.findById(projectMemberId).orElseThrow();
+        ProjectMember projectMember = projectMemberRepository.findById(projectMemberId).orElseThrow(
+                () -> new ResourceNotFoundException("Project Member", memberId.toString())
+        );
 
         projectMember.setProjectRole(request.role());
 
@@ -108,12 +114,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         }
 
         projectMemberRepository.deleteById(projectMemberId);
-        return;
-
     }
 
     // INTERNAL FUNCTIONS
     private Project getAccessibleProjectById(Long projectId, Long userId) {
-        return projectRepository.findAccessibleByProjectId(projectId, userId).orElseThrow();
+        return projectRepository.findAccessibleByProjectId(projectId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId.toString()));
     }
 }
