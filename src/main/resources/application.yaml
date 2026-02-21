@@ -1,11 +1,16 @@
 spring:
   application:
     name: lovableClone
+
+  profiles:
+    active: local
+
   datasource:
     url: jdbc:postgresql://localhost:5432/test_db
-    username: postgres
-    password: 78281220
     driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
+
   jpa:
     hibernate:
       ddl-auto: update
