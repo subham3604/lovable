@@ -5,6 +5,7 @@ import com.subham.projects.lovableClone.dto.project.ProjectResponse;
 import com.subham.projects.lovableClone.dto.project.ProjectSummaryResponse;
 import com.subham.projects.lovableClone.entity.Project;
 import com.subham.projects.lovableClone.entity.User;
+import com.subham.projects.lovableClone.error.ResourceNotFoundException;
 import com.subham.projects.lovableClone.mapper.ProjectMapper;
 import com.subham.projects.lovableClone.repository.ProjectRepository;
 import com.subham.projects.lovableClone.repository.UserRepository;
@@ -13,7 +14,6 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.antlr.v4.runtime.misc.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -36,7 +36,9 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectResponse createProject(ProjectRequest request, Long userId) {
-        User owner = userRepository.findById(userId).orElseThrow();
+        User owner = userRepository.findById(userId).orElseThrow(
+                () -> new ResourceNotFoundException("User", userId.toString())
+        );
         Project project = Project.builder().name(request.name()).owner(owner).build();
 
         project = projectRepository.save(project);
@@ -62,7 +64,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void softDelete(Long id, Long userId) {
         Project project = getAccessibleProjectById(id, userId);
-        if(!project.getOwner().getId().equals(userId)){
+        if (!project.getOwner().getId().equals(userId)) {
             throw new RuntimeException("You are not allowed to delete.");
         }
         project.setDeletedAt(Instant.now());
@@ -71,7 +73,8 @@ public class ProjectServiceImpl implements ProjectService {
 
 
     // INTERNAL FUNCTIONS
-    private Project getAccessibleProjectById(Long projectId, Long userId){
-        return projectRepository.findAccessibleByProjectId(projectId, userId).orElseThrow();
+    private Project getAccessibleProjectById(Long projectId, Long userId) {
+        return projectRepository.findAccessibleByProjectId(projectId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId.toString()));
     }
 }
