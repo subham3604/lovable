@@ -20,7 +20,6 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -36,26 +35,17 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     @Override
     public List<MemberResponse> getProjectMembers(Long projectId, Long userId) {
         Project project = getAccessibleProjectById(projectId, userId);
-        List<MemberResponse> memberResponseList = new ArrayList<>();
-        memberResponseList.add(projectMemberMapper.toMemberResponseFromUser(project.getOwner()));
 
-        memberResponseList.addAll(projectMemberRepository.findByIdProjectId(projectId).stream().map(projectMemberMapper::toMemberResponseFromMember).toList());
-
-        return memberResponseList;
-
+        return projectMemberRepository.findByIdProjectId(projectId)
+                .stream()
+                .map(projectMemberMapper::toMemberResponseFromMember).toList();
     }
 
     @Override
     public MemberResponse inviteMember(Long projectId, InviteMemberRequest request, Long userId) {
         Project project = getAccessibleProjectById(projectId, userId);
 
-        if (!project.getOwner().getId().equals(userId)) {
-            throw new ForbiddenException("Only project owners can invite members.");
-        }
-
-        User invitee = userRepository.findByEmail(request.email()).orElseThrow(
-                () -> new ResourceNotFoundException("User", request.email())
-        );
+        User invitee = userRepository.findByUsername(request.username()).orElseThrow(() -> new ResourceNotFoundException("User", request.username()));
 
         if (invitee.getId().equals(userId)) {
             throw new ForbiddenException("You can not invite yourself.");
@@ -66,13 +56,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
             throw new ForbiddenException("User is already a member of this project.");
         }
 
-        ProjectMember member = ProjectMember.builder()
-                .id(projectMemberId)
-                .project(project)
-                .user(invitee)
-                .projectRole(request.role())
-                .invitedAt(Instant.now())
-                .build();
+        ProjectMember member = ProjectMember.builder().id(projectMemberId).project(project).user(invitee).projectRole(request.role()).invitedAt(Instant.now()).build();
 
         projectMemberRepository.save(member);
 
@@ -83,14 +67,8 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     public MemberResponse updateMemberRole(Long projectId, Long memberId, UpdateMemberRoleRequest request, Long userId) {
         Project project = getAccessibleProjectById(projectId, userId);
 
-        if (!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("Only project owners can update roles.");
-        }
-
         ProjectMemberId projectMemberId = new ProjectMemberId(projectId, memberId);
-        ProjectMember projectMember = projectMemberRepository.findById(projectMemberId).orElseThrow(
-                () -> new ResourceNotFoundException("Project Member", memberId.toString())
-        );
+        ProjectMember projectMember = projectMemberRepository.findById(projectMemberId).orElseThrow(() -> new ResourceNotFoundException("Project Member", memberId.toString()));
 
         projectMember.setProjectRole(request.role());
 
@@ -104,10 +82,6 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     public void deleteProjectMember(Long projectId, Long memberId, Long userId) {
         Project project = getAccessibleProjectById(projectId, userId);
 
-        if (!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("Only project owners can delete members.");
-        }
-
         ProjectMemberId projectMemberId = new ProjectMemberId(projectId, memberId);
         if (!projectMemberRepository.existsById(projectMemberId)) {
             throw new RuntimeException("Project Member does not exist.");
@@ -118,7 +92,6 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
 
     // INTERNAL FUNCTIONS
     private Project getAccessibleProjectById(Long projectId, Long userId) {
-        return projectRepository.findAccessibleByProjectId(projectId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId.toString()));
+        return projectRepository.findAccessibleByProjectId(projectId, userId).orElseThrow(() -> new ResourceNotFoundException("Project", projectId.toString()));
     }
 }
