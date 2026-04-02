@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -30,8 +31,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleInputValidationError(MethodArgumentNotValidException ex) {
-        List<ApiFieldError> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> new ApiFieldError(error.getField(), error.getDefaultMessage())).toList();
+        List<ApiFieldError> errors = ex.getBindingResult().getFieldErrors().stream().map(error -> new ApiFieldError(error.getField(), error.getDefaultMessage())).toList();
 
         ApiError apiError = new ApiError(HttpStatus.BAD_REQUEST, "Input Validation Failed", errors);
         log.error(apiError.toString(), ex);
@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<ApiError> handleForbiddenRequests(ForbiddenException ex){
+    public ResponseEntity<ApiError> handleForbiddenRequests(ForbiddenException ex) {
         ApiError apiError = new ApiError(HttpStatus.FORBIDDEN, ex.getMessage());
         log.error(apiError.toString(), ex);
         return ResponseEntity.status(apiError.status()).body(apiError);
@@ -55,13 +55,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleConstraintViolation(DataIntegrityViolationException ex) {
 
-        ApiError apiError = new ApiError(
-                HttpStatus.CONFLICT,
-                "Resource already exists or duplicate entry."
-        );
+        ApiError apiError = new ApiError(HttpStatus.CONFLICT, "Resource already exists or duplicate entry.");
 
         log.error("Database constraint violation", ex);
 
         return ResponseEntity.status(apiError.status()).body(apiError);
+    }
+
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ApiError> handleAuthorizationDenied(Exception ex) {
+
+        ApiError apiError = new ApiError(HttpStatus.FORBIDDEN, "Access Denied");
+
+        log.error("Authorization failed", ex);
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(apiError);
     }
 }
