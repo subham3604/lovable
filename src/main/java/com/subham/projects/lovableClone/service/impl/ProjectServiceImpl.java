@@ -8,6 +8,7 @@ import com.subham.projects.lovableClone.entity.ProjectMember;
 import com.subham.projects.lovableClone.entity.ProjectMemberId;
 import com.subham.projects.lovableClone.entity.User;
 import com.subham.projects.lovableClone.enums.ProjectRole;
+import com.subham.projects.lovableClone.error.BadRequestException;
 import com.subham.projects.lovableClone.error.ResourceNotFoundException;
 import com.subham.projects.lovableClone.mapper.ProjectMapper;
 import com.subham.projects.lovableClone.repository.ProjectMemberRepository;
@@ -15,6 +16,7 @@ import com.subham.projects.lovableClone.repository.ProjectRepository;
 import com.subham.projects.lovableClone.repository.UserRepository;
 import com.subham.projects.lovableClone.security.AuthUtil;
 import com.subham.projects.lovableClone.service.ProjectService;
+import com.subham.projects.lovableClone.service.SubscriptionService;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class ProjectServiceImpl implements ProjectService {
     ProjectMemberRepository projectMemberRepository;
     UserRepository userRepository;
     ProjectMapper projectMapper;
+    SubscriptionService subscriptionService;
     AuthUtil authUtil;
 
     @Override
@@ -45,6 +48,10 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectResponse createProject(ProjectRequest request) {
+        if (!subscriptionService.canCreateNewProject()) {
+            throw new BadRequestException("You have hit your quota of number of projects allowed with this plan, either delete some projects or upgrade to a higher tier plan.");
+        }
+
         Long userId = authUtil.getCurrentUserId();
 //        User owner = userRepository.findById(userId).orElseThrow(
 //                () -> new ResourceNotFoundException("User", userId.toString())

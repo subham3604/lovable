@@ -8,6 +8,7 @@ import com.subham.projects.lovableClone.enums.SubscriptionStatus;
 import com.subham.projects.lovableClone.error.ResourceNotFoundException;
 import com.subham.projects.lovableClone.mapper.SubscriptionMapper;
 import com.subham.projects.lovableClone.repository.PlanRepository;
+import com.subham.projects.lovableClone.repository.ProjectMemberRepository;
 import com.subham.projects.lovableClone.repository.SubscriptionRepository;
 import com.subham.projects.lovableClone.repository.UserRepository;
 import com.subham.projects.lovableClone.security.AuthUtil;
@@ -29,6 +30,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final UserRepository userRepository;
     private final PlanRepository planRepository;
     private final SubscriptionMapper subscriptionMapper;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final int FREE_TIER_MAX_PROJECTS = 1;
 
 
     @Override
@@ -54,8 +57,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public void updateSubscription(String gatewaySubscriptionId, SubscriptionStatus status, Instant periodStart,
-                                   Instant periodEnd, Boolean cancelAtPeriodEnd, Long planId) {
+    public void updateSubscription(String gatewaySubscriptionId, SubscriptionStatus status, Instant periodStart, Instant periodEnd, Boolean cancelAtPeriodEnd, Long planId) {
         Subscription subscription = getSubscription(gatewaySubscriptionId);
 
         if (status != null) subscription.setStatus(status);
@@ -106,6 +108,20 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         subscriptionRepository.save(subscription);
 
         //TODO(Subham): Notify user via email
+    }
+
+    @Override
+    public boolean canCreateNewProject() {
+        Long userId = authUtil.getCurrentUserId();
+        SubscriptionResponse subscription = getCurrentSubscription();
+        int ownedProjects = projectMemberRepository.countProjectOwnedByUser(userId);
+
+
+        if (subscription.plan() == null) {
+            return ownedProjects < FREE_TIER_MAX_PROJECTS;
+        }
+
+        return ownedProjects < subscription.plan().maxProjects();
     }
 
     // Utility Methods
