@@ -75,7 +75,6 @@ public class ProjectServiceImpl implements ProjectService {
         Long userId = authUtil.getCurrentUserId();
         Project project = getAccessibleProjectById(projectId, userId);
         return projectMapper.toProjectResponse(project);
-
     }
 
     @Override
