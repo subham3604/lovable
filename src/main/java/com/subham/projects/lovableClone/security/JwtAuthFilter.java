@@ -13,6 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
 
@@ -23,30 +24,36 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     AuthUtil authUtil;
+    HandlerExceptionResolver handlerExceptionResolver;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        log.info("incoming requests: {}", request.getRequestURI());
+        try {
+            log.info("incoming requests: {}", request.getRequestURI());
 
-        final String requestHeaderToken = request.getHeader("Authorization");
-        if (requestHeaderToken == null || !requestHeaderToken.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+            final String requestHeaderToken = request.getHeader("Authorization");
+            if (requestHeaderToken == null || !requestHeaderToken.startsWith("Bearer ")) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
         /*
          Request Header:
          Authorization: Bearer adsgasdgsa.adfasdgferge.adgffergd
          */
-        String jwtToken = requestHeaderToken.split("Bearer ")[1];
+            String jwtToken = requestHeaderToken.split("Bearer ")[1];
 
-        JwtUserPrincipal user = authUtil.verifyAccessToken(jwtToken);
+            JwtUserPrincipal user = authUtil.verifyAccessToken(jwtToken);
 
-        if (user != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.authorities());
-            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            if (user != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.authorities());
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            }
+
+            filterChain.doFilter(request, response);
+        } catch (Exception e) {
+            log.error("JWT Exception type: {}", e.getClass().getName());
+            handlerExceptionResolver.resolveException(request, response, null, e);
         }
-
-        filterChain.doFilter(request, response);
     }
 }
