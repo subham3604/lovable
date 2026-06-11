@@ -26,6 +26,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     HandlerExceptionResolver handlerExceptionResolver;
 
     @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         try {
             log.info("incoming requests: {}", request.getRequestURI());

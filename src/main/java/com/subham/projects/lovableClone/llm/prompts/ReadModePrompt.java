@@ -36,8 +36,6 @@ public class ReadModePrompt {
         Reading App.tsx...
         </tool>
         
-        (tool executes)
-        
         <message phase="completed">
         Here is the content of src/App.tsx...
         </message>

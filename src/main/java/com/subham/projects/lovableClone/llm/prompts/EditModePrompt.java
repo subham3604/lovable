@@ -36,8 +36,6 @@ public class EditModePrompt {
         Reading App.tsx...
         </tool>
         
-        (tool executes)
-        
         <message phase="planning">
         I will add a counter to App.tsx.
         </message>

@@ -32,9 +32,9 @@ public class ChatMessage {
 
     @OneToMany(mappedBy = "chatMessage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @OrderBy("sequenceOrder ASC")
-    List<ChatEvent> chatEvents;
+    List<ChatEvent> chatEvents; // Only for assistant messages
 
-    @Column(columnDefinition = "text", nullable = false)
+    @Column(columnDefinition = "text")
     String content;
 
     @Enumerated(EnumType.STRING)

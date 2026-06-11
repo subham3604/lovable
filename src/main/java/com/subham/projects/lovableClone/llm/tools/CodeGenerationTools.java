@@ -19,12 +19,19 @@ public class CodeGenerationTools {
 
     @Tool(
             name = "read_files",
-            description = "Read the content of the files. Only input the file names present inside the FILE_TREE. Do not input any path that is not present inside the FILE_TREE."
-    )
+            description = """
+                    Reads the contents of files.
+                    
+                    IMPORTANT:
+                    When you need file contents, ALWAYS call this tool.
+                    Do not pretend to read files.
+                    Do not describe reading files.
+                    Invoke the tool directly.
+                    """)
     public List<String> readFiles(
             @ToolParam(description = "List of relative paths. e.g, ['src/App.tsx']")
             List<String> paths) {
-
+//        log.info("READ_FILES TOOL INVOKED");
         List<String> result = new ArrayList<>();
 
         for (String path : paths) {
@@ -35,11 +42,11 @@ public class CodeGenerationTools {
             String content = projectFileService.getFileContent(projectId, cleanPath).content();
             result.add(String.format(
                     """
-                    FILE: %s
-                    
-                    
-                    %s
-                    """,
+                            FILE: %s
+                            
+                            
+                            %s
+                            """,
                     cleanPath,
                     content
             ));

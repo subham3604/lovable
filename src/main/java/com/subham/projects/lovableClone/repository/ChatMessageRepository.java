@@ -12,7 +12,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     @Query("""
             SELECT DISTINCT m FROM ChatMessage m
-            LEFT JOIN FETCH m.events e
+            LEFT JOIN FETCH m.chatEvents e
             WHERE m.chatSession =:chatSession
             ORDER BY m.createdAt ASC
             """)
