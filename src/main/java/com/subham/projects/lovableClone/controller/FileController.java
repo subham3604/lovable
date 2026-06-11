@@ -2,7 +2,7 @@ package com.subham.projects.lovableClone.controller;
 
 import com.subham.projects.lovableClone.dto.project.FileContentResponse;
 import com.subham.projects.lovableClone.dto.project.FileNode;
-import com.subham.projects.lovableClone.service.FileService;
+import com.subham.projects.lovableClone.service.ProjectFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,19 +13,15 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/projects/{projectId}/files")
 public class FileController {
 
-    private final FileService fileService;
-
-    public FileController(FileService fileService) {
-        this.fileService = fileService;
-    }
+    private final ProjectFileService projectFileService;
 
     @GetMapping
     public ResponseEntity<List<FileNode>> getFileTree(@PathVariable Long projectId) {
-        Long userId = 1L;
-        return ResponseEntity.ok(fileService.getFileTree(projectId, userId));
+        return ResponseEntity.ok(projectFileService.getFileTree(projectId));
     }
 
     @GetMapping("/{*path}") // /src/hooks/get-user-hook.jsx
@@ -33,8 +29,7 @@ public class FileController {
             @PathVariable Long projectId,
             @PathVariable String path
     ) {
-        Long userId = 1L;
-        return ResponseEntity.ok(fileService.getFileContent(projectId, path, userId));
+        return ResponseEntity.ok(projectFileService.getFileContent(projectId, path));
     }
 
 }

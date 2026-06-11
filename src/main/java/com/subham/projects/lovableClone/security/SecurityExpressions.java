@@ -1,8 +1,6 @@
 package com.subham.projects.lovableClone.security;
 
-import com.subham.projects.lovableClone.entity.Project;
 import com.subham.projects.lovableClone.enums.ProjectPermissions;
-import com.subham.projects.lovableClone.enums.ProjectRole;
 import com.subham.projects.lovableClone.repository.ProjectMemberRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
