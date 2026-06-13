@@ -23,7 +23,6 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
@@ -95,7 +94,15 @@ public class AiServiceImpl implements AiService {
                     String text = response.getResult().getOutput().getText();
                     return text == null ? "" : text;
                 })
-                .filter(text -> !text.isBlank());
+                .filter(text -> !text.isBlank())
+                .scan(new StringBuilder(), (buffer, newChunk) -> {
+                    // buffer tracks accumulated text, newChunk is new text from API
+                    String accumulated = buffer.toString() + newChunk;
+                    buffer.setLength(0);
+                    buffer.append(accumulated);
+                    return new StringBuilder(newChunk); // Return ONLY the new chunk
+                })
+                .map(sb -> sb.toString());
     }
 
     private void finaliseChats(String userMessage, ChatSession chatSession, String fullText, Long projectId) {
