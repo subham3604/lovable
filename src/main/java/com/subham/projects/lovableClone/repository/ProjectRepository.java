@@ -1,6 +1,5 @@
 package com.subham.projects.lovableClone.repository;
 
-import com.subham.projects.lovableClone.dto.project.ProjectSummaryResponse;
 import com.subham.projects.lovableClone.entity.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
