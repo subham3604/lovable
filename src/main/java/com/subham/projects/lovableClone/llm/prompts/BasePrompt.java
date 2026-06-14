@@ -144,5 +144,6 @@ public class BasePrompt {
             - No placeholders.
             - No partial updates.
             - Output each file at most once.
+            - DO NOT wrap the code inside the <file> tag in markdown code blocks (e.g. do not wrap the content in triple backticks ```tsx ... ```). Output raw, clean code directly.
             """;
 }

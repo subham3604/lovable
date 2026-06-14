@@ -58,7 +58,7 @@ public class LlmResponseParser {
                 case "file" -> {
                     builder.type(ChatEventType.FILE_EDIT);
                     builder.filePath(attrMap.get("path")); // Required for files
-//                    builder.content(null);
+                    builder.content(cleanFileContent(content));
                 }
                 case "tool" -> {
                     builder.type(ChatEventType.TOOL_LOG);
@@ -73,6 +73,19 @@ public class LlmResponseParser {
         }
 
         return events;
+    }
+
+    private String cleanFileContent(String content) {
+        if (content == null) {
+            return null;
+        }
+        String trimmed = content.trim();
+        Pattern codeBlockPattern = Pattern.compile("^```[a-zA-Z0-9+#-]*\\s*\\n?(.*?)\\n?```$", Pattern.DOTALL);
+        Matcher matcher = codeBlockPattern.matcher(trimmed);
+        if (matcher.matches()) {
+            return matcher.group(1).trim();
+        }
+        return trimmed;
     }
 
     private Map<String, String> extractAttributes(String attributeString) {
