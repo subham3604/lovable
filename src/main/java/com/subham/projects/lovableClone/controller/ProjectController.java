@@ -52,6 +52,18 @@ public class ProjectController {
     public ResponseEntity<DeployResponse> deployProject(@PathVariable Long id) {
         return ResponseEntity.ok(deploymentService.deploy(id));
     }
+
+    @PostMapping("/{id}/heartbeat")
+    public ResponseEntity<Void> heartbeat(@PathVariable Long id) {
+        deploymentService.keepAlive(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/stop")
+    public ResponseEntity<Void> stopProject(@PathVariable Long id) {
+        deploymentService.stop(id);
+        return ResponseEntity.ok().build();
+    }
 }
 
 

@@ -4,14 +4,18 @@ import com.subham.projects.lovableClone.dto.deploy.DeployResponse;
 import com.subham.projects.lovableClone.service.DeploymentService;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.dsl.ExecListener;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
-import java.util.concurrent.CompletableFuture;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -30,16 +34,24 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
     private static final String RUNNER_CONTAINER = "runner";
     private static final String REVERSE_PROXY_PORT = "8090";
 
+    private final Map<Long, Instant> activePreviews = new ConcurrentHashMap<>();
+
+    @Value("${app.preview.idle-timeout:5m}")
+    private Duration idleTimeout;
+
     @Override
     public DeployResponse deploy(Long projectId) {
         String domain = "project-" + projectId + ".app.domain.com";
         Pod existingPod = findAlreadyExistingPod(projectId);
 
         if (existingPod != null) {
+            activePreviews.put(projectId, Instant.now());
             return new DeployResponse("http://" + domain + ":" + REVERSE_PROXY_PORT);
         }
 
-        return claimAndStartNewPod(projectId, domain);
+        DeployResponse response = claimAndStartNewPod(projectId, domain);
+        activePreviews.put(projectId, Instant.now());
+        return response;
     }
 
     private DeployResponse claimAndStartNewPod(Long projectId, String domain) {
@@ -124,13 +136,59 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
         }
     }
 
+    @Override
+    public void keepAlive(Long projectId) {
+        log.debug("Heartbeat received for project {}", projectId);
+        activePreviews.put(projectId, Instant.now());
+    }
+
+    @Override
+    public void stop(Long projectId) {
+        log.info("Request to stop preview for project {}", projectId);
+        Pod pod = findAlreadyExistingPod(projectId);
+        if (pod != null) {
+            String podName = pod.getMetadata().getName();
+            log.info("Deleting pod {} for project {}", podName, projectId);
+            try {
+                kubernetesClient.pods().inNamespace(NAMESPACE).withName(podName).withGracePeriod(0).delete();
+            } catch (Exception e) {
+                log.error("Failed to delete pod {}", podName, e);
+                throw e;
+            }
+        }
+        activePreviews.remove(projectId);
+    }
+
+    @Scheduled(fixedDelay = 10000)
+    public void reapInactivePods() {
+        Instant now = Instant.now();
+        activePreviews.forEach((projectId, lastHeartbeat) -> {
+            if (now.isAfter(lastHeartbeat.plus(idleTimeout))) {
+                log.info("Project {} preview idle timeout reached. Initiating cleanup.", projectId);
+                try {
+                    stop(projectId);
+                } catch (Exception e) {
+                    log.error("Failed to stop preview pod for project {}", projectId, e);
+                }
+            }
+        });
+    }
+
     private Pod findAlreadyExistingPod(Long projectId) {
-        return kubernetesClient.pods().inNamespace(NAMESPACE)
-                .withLabel(PROJECT_LABEL, projectId.toString())
-                .withLabel(POOL_LABEL, BUSY)
-                .list().getItems().stream()
-                .filter(pod -> pod.getStatus().getPhase().equals("RUNNING"))
-                .findFirst()
-                .orElse(null);
+        try {
+            return kubernetesClient.pods().inNamespace(NAMESPACE)
+                    .withLabel(PROJECT_LABEL, projectId.toString())
+                    .withLabel(POOL_LABEL, BUSY)
+                    .list().getItems().stream()
+                    .filter(pod -> {
+                        String phase = pod.getStatus() != null ? pod.getStatus().getPhase() : "UNKNOWN";
+                        return "Running".equalsIgnoreCase(phase);
+                    })
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception e) {
+            log.error("Failed to query Kubernetes pods for project {}", projectId, e);
+            throw e;
+        }
     }
 }
