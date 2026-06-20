@@ -130,6 +130,10 @@
             <version>7.7.0</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>

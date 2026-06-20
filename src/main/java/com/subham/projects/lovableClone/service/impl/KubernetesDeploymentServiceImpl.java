@@ -8,6 +8,7 @@ import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class KubernetesDeploymentServiceImpl implements DeploymentService {
 
     private final KubernetesClient kubernetesClient;
+    private final StringRedisTemplate redisTemplate;
 
     private static final String NAMESPACE = "genesis-ns";
     private static final String POOL_LABEL = "status";
@@ -88,6 +90,9 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
         String startCmd = "nohup npm run dev -- --host 0.0.0.0 --port 5173 < /dev/null > /app/dev.log 2>&1 &";
         execCommand(podName, RUNNER_CONTAINER, "sh", "-c", startCmd);
 
+        //* Register the route in redis
+        registerRoute(domain, pod);
+
         log.info("Deployment successful http://{}:{}", domain, REVERSE_PROXY_PORT);
         return new DeployResponse("http://" + domain + ":" + REVERSE_PROXY_PORT);
     }
@@ -134,6 +139,13 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
                     podName, container, out.toString(), err.toString(), e);
             throw new RuntimeException("Kubernetes exec failed on container " + container + ": " + e.getMessage(), e);
         }
+    }
+
+    private void registerRoute(String domain, Pod pod) {
+        String podIp = pod.getStatus().getPodIP();
+        if (podIp == null) throw new RuntimeException("Pod is running but has no ip.");
+
+        redisTemplate.opsForValue().set("route:" + domain, podIp + ":5173", 5, TimeUnit.MINUTES);
     }
 
     @Override
