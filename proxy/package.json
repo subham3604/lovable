@@ -1,0 +1,17 @@
+{
+  "name": "genesis-proxy",
+  "version": "1.0.0",
+  "description": "Reverse proxy server to handle preview URLs from the kubernetes cluster.",
+  "license": "ISC",
+  "author": "sydv3604@gmail.com",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1",
+    "ioredis": "^5.11.1"
+  }
+}

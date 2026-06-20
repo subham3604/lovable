@@ -1,7 +1,9 @@
 package com.subham.projects.lovableClone.service.impl;
 
 import com.subham.projects.lovableClone.dto.auth.UserProfileResponse;
+import com.subham.projects.lovableClone.entity.User;
 import com.subham.projects.lovableClone.error.ResourceNotFoundException;
+import com.subham.projects.lovableClone.mapper.UserMapper;
 import com.subham.projects.lovableClone.repository.UserRepository;
 import com.subham.projects.lovableClone.service.UserService;
 import lombok.AccessLevel;
@@ -18,10 +20,13 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService, UserDetailsService {
 
     UserRepository userRepository;
+    UserMapper userMapper;
 
     @Override
     public UserProfileResponse getProfile(Long userId) {
-        return null;
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
+        return userMapper.toUserProfileResponseFromUser(user);
     }
 
     @Override

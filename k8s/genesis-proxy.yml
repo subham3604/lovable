@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genesis-proxy
+  namespace: genesis-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: genesis-proxy
+  template:
+    metadata:
+      labels:
+        app: genesis-proxy
+    spec:
+      containers:
+        - name: proxy
+          image: genesis-proxy:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          env:
+            - name: REDIS_URL
+              # Refers to the service in the same namespace
+              value: "redis://redis-service:6379"
+          ports:
+            - containerPort: 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: genesis-proxy-svc
+  namespace: genesis-ns
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: genesis-proxy

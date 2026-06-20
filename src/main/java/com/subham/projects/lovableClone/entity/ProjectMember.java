@@ -1,12 +1,10 @@
 package com.subham.projects.lovableClone.entity;
 
 import com.subham.projects.lovableClone.enums.ProjectRole;
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.lang.foreign.MemorySegment;
 import java.time.Instant;
 
 @Getter

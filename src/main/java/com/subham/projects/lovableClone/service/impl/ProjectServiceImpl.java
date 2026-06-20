@@ -45,20 +45,24 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public List<ProjectSummaryResponse> getUserProjects() {
         Long userId = authUtil.getCurrentUserId();
-        return projectMapper.toListProjectSummaryResponse(projectRepository.findAllAccessibleByUser(userId));
+        var projectWithRolesList = projectRepository.findAllAccessibleByUser(userId);
+        return projectWithRolesList.stream()
+                .map(p -> projectMapper.toProjectSummaryResponse(p.getProject(), p.getProjectRole())).toList();
     }
 
     @Override
     public ProjectResponse createProject(ProjectRequest request) {
         if (!subscriptionService.canCreateNewProject()) {
-            throw new BadRequestException("You have hit your quota of number of projects allowed with this plan, either delete some projects or upgrade to a higher tier plan.");
+            throw new BadRequestException(
+                    "You have hit your quota of number of projects allowed with this plan, either delete some projects or upgrade to a higher tier plan.");
         }
 
         Long userId = authUtil.getCurrentUserId();
-//        User owner = userRepository.findById(userId).orElseThrow(
-//                () -> new ResourceNotFoundException("User", userId.toString())
-//        );
-        User owner = userRepository.getReferenceById(userId); // only works in transactional context, provided a dummy hibernate object only, no database call
+        // User owner = userRepository.findById(userId).orElseThrow(
+        // () -> new ResourceNotFoundException("User", userId.toString())
+        // );
+        User owner = userRepository.getReferenceById(userId); // only works in transactional context, provided a dummy
+        // hibernate object only, no database call
 
         Project project = Project.builder().name(request.name()).build();
         project = projectRepository.save(project);
@@ -80,10 +84,11 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @PreAuthorize("@security.canViewProject(#projectId)")
-    public ProjectResponse getUserProjectById(Long projectId) {
+    public ProjectSummaryResponse getUserProjectById(Long projectId) {
         Long userId = authUtil.getCurrentUserId();
-        Project project = getAccessibleProjectById(projectId, userId);
-        return projectMapper.toProjectResponse(project);
+        ProjectRepository.ProjectWithRole projectWithRole = projectRepository.findAccessibleByProjectIdWithRole(projectId, userId).orElseThrow(() ->
+                new BadRequestException("Project not found."));
+        return projectMapper.toProjectSummaryResponse(projectWithRole.getProject(), projectWithRole.getProjectRole());
     }
 
     @Override
@@ -104,7 +109,6 @@ public class ProjectServiceImpl implements ProjectService {
         project.setDeletedAt(Instant.now());
         projectRepository.save(project);
     }
-
 
     // INTERNAL FUNCTIONS
     private Project getAccessibleProjectById(Long projectId, Long userId) {

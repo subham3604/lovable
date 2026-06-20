@@ -40,7 +40,8 @@ public class AiServiceImpl implements AiService {
     private final FileTreeContextAdvisor fileTreeContextAdvisor;
     private final LlmResponseParser llmResponseParser;
 
-    private static final Pattern FILE_TAG_PATTERN = Pattern.compile("<file path=\"([^\"]+)\">(.*?)</file>", Pattern.DOTALL);
+    private static final Pattern FILE_TAG_PATTERN = Pattern.compile("<file path=\"([^\"]+)\">(.*?)</file>",
+            Pattern.DOTALL);
 
     @Override
     @PreAuthorize("@security.canEditProject(#projectId)")
@@ -51,14 +52,15 @@ public class AiServiceImpl implements AiService {
         Map<String, Object> advisorParams = Map.of("userId", userId, "projectId", projectId);
         StringBuilder chatResponseBuilder = new StringBuilder();
 
-
         /*
-            The file tree could have been added to the system prompt by just doing
-            return chatClient.prompt().system(PromptUtil.CODE_GENERATION_SYSTEM_PROMPT + FileTreeService.getFiletree())
-
-            but just to keep up with the spring ai documentation and the best practice that the system prompt should be
-            mutated with the help of advisors.
-        * */
+         * The file tree could have been added to the system prompt by just doing
+         * return chatClient.prompt().system(PromptUtil.CODE_GENERATION_SYSTEM_PROMPT +
+         * FileTreeService.getFiletree())
+         * 
+         * but just to keep up with the spring ai documentation and the best practice
+         * that the system prompt should be
+         * mutated with the help of advisors.
+         */
 
         CodeGenerationTools codeGenerationTools = new CodeGenerationTools(projectFileService, projectId);
 
@@ -76,20 +78,17 @@ public class AiServiceImpl implements AiService {
                 .doOnNext(response -> {
                     String chatContent = response.getResult().getOutput().getText();
 
-//                    log.info("STREAM CHUNK:\n{}", chatContent);
+                    // log.info("STREAM CHUNK:\n{}", chatContent);
                     if (chatContent != null) {
                         chatResponseBuilder.append(chatContent);
                     }
 
                 })
-                .doOnComplete(() ->
-                                Schedulers.boundedElastic().schedule(() ->
-                                                finaliseChats(userMessage, chatSession, chatResponseBuilder.toString(), projectId)
-//                                parseAndSaveFiles(chatResponseBuilder.toString(), projectId)
-                                )
-                )
-                .doOnError
-                        (error -> log.error("Error during streaming for projectId: {}", projectId, error))
+                .doOnComplete(() -> Schedulers.boundedElastic().schedule(
+                        () -> finaliseChats(userMessage, chatSession, chatResponseBuilder.toString(), projectId)
+                // parseAndSaveFiles(chatResponseBuilder.toString(), projectId)
+                ))
+                .doOnError(error -> log.error("Error during streaming for projectId: {}", projectId, error))
                 .map(response -> {
                     String text = response.getResult().getOutput().getText();
                     return text == null ? "" : text;
@@ -106,7 +105,7 @@ public class AiServiceImpl implements AiService {
     }
 
     private void finaliseChats(String userMessage, ChatSession chatSession, String fullText, Long projectId) {
-//        log.info("Starting finaliseChats");
+        // log.info("Starting finaliseChats");
         try {
             // * Save the user message
             log.info("Saving USER message: {}", userMessage);
@@ -115,38 +114,31 @@ public class AiServiceImpl implements AiService {
                             .chatSession(chatSession)
                             .role(MessageRole.USER)
                             .content(userMessage)
-                            .build()
-            );
+                            .build());
             log.info("Saved USER message.");
-            ChatMessage assistantMessage =
-                    chatMessageRepository.save(
-                            ChatMessage.builder()
-                                    .chatSession(chatSession)
-                                    .role(MessageRole.ASSISTANT)
-                                    .content(fullText)
-                                    .build()
-                    );
+            ChatMessage assistantMessage = chatMessageRepository.save(
+                    ChatMessage.builder()
+                            .chatSession(chatSession)
+                            .role(MessageRole.ASSISTANT)
+                            .content(fullText)
+                            .build());
 
             List<ChatEvent> chatEventList = llmResponseParser.parseChatEvents(fullText, assistantMessage);
 
-            //* Add logging
+            // * Add logging
             log.info(
                     "Parsed {} events",
-                    chatEventList.size()
-            );
+                    chatEventList.size());
 
             chatEventList.stream()
                     .filter(e -> e.getType() == ChatEventType.FILE_EDIT)
                     .forEach(e -> projectFileService.saveFile(e.getFilePath(), e.getContent(), projectId));
 
-            chatEventList.forEach(e ->
-                    log.info(
-                            "Type={}, File={}, MessageId={}",
-                            e.getType(),
-                            e.getFilePath(),
-                            e.getChatMessage().getId()
-                    )
-            );
+            chatEventList.forEach(e -> log.info(
+                    "Type={}, File={}, MessageId={}",
+                    e.getType(),
+                    e.getFilePath(),
+                    e.getChatMessage().getId()));
 
             chatEventRepository.saveAll(chatEventList);
         } catch (Exception e) {
@@ -159,10 +151,10 @@ public class AiServiceImpl implements AiService {
         ChatSession chatSession = chatSessionRepository.findById(chatSessionId).orElse(null);
 
         if (chatSession == null) {
-            Project project = projectRepository.findById(projectId).orElseThrow(() ->
-                    new ResourceNotFoundException("Project", projectId.toString()));
-            User user = userRepository.findById(userId).orElseThrow(() ->
-                    new ResourceNotFoundException("User", userId.toString()));
+            Project project = projectRepository.findById(projectId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Project", projectId.toString()));
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
 
             chatSession = ChatSession.builder()
                     .id(chatSessionId)

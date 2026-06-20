@@ -1,6 +1,5 @@
 package com.subham.projects.lovableClone.controller;
 
-import com.stripe.exception.EventDataObjectDeserializationException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;

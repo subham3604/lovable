@@ -65,7 +65,8 @@ public class StripePaymentProcessor implements PaymentProcessor {
             Session session = Session.create(params.build());
             return new CheckoutResponse(session.getUrl());
         } catch (StripeException e) {
-            throw new RuntimeException(e);
+            log.error("Stripe Checkout failed", e);
+            throw new BadRequestException("Stripe error: " + e.getMessage());
         }
     }
 
