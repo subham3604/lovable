@@ -47,7 +47,8 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 
     @Override
     public FileContentResponse getFileContent(Long projectId, String path) {
-        String objectName = projectId + "/" + path;
+        String cleanPath = path.startsWith("/") ? path.substring(1) : path;
+        String objectName = projectId + "/" + cleanPath;
         log.info("Bucket: {}", BUCKET);
         log.info("Object Key: '{}'", objectName);
         try (

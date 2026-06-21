@@ -48,6 +48,7 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
 
         if (existingPod != null) {
             activePreviews.put(projectId, Instant.now());
+            registerRoute(domain, existingPod);
             return new DeployResponse("http://" + domain + ":" + REVERSE_PROXY_PORT);
         }
 
@@ -152,6 +153,15 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
     public void keepAlive(Long projectId) {
         log.debug("Heartbeat received for project {}", projectId);
         activePreviews.put(projectId, Instant.now());
+        try {
+            Pod pod = findAlreadyExistingPod(projectId);
+            if (pod != null) {
+                String domain = "project-" + projectId + ".app.domain.com";
+                registerRoute(domain, pod);
+            }
+        } catch (Exception e) {
+            log.error("Failed to refresh Redis route during heartbeat for project {}", projectId, e);
+        }
     }
 
     @Override
