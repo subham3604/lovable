@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lovable-backend
+  namespace: genesis-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lovable-backend
+  template:
+    metadata:
+      labels:
+        app: lovable-backend
+    spec:
+      containers:
+        - name: backend
+          image: sydv3604/lovable-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secrets
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lovable-backend-svc
+  namespace: genesis-ns
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: lovable-backend
+  type: ClusterIP

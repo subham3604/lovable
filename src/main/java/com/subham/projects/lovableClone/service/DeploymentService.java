@@ -6,4 +6,5 @@ public interface DeploymentService {
     DeployResponse deploy(Long projectId);
     void keepAlive(Long projectId);
     void stop(Long projectId);
+    boolean isDeployed(Long projectId);
 }

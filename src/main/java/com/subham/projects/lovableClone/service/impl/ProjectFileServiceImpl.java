@@ -68,8 +68,7 @@ public class ProjectFileServiceImpl implements ProjectFileService {
     @Override
     public void saveFile(String filePath, String fileContent, Long projectId) {
         Project project = projectRepository.findById(projectId).orElseThrow(
-                () -> new ResourceNotFoundException("Project", projectId.toString())
-        );
+                () -> new ResourceNotFoundException("Project", projectId.toString()));
 
         String cleanFilePath = filePath.startsWith("/") ? filePath.substring(1) : filePath;
         String objectKey = projectId + "/" + cleanFilePath;
@@ -78,7 +77,7 @@ public class ProjectFileServiceImpl implements ProjectFileService {
             byte[] contentBytes = fileContent.getBytes(StandardCharsets.UTF_8);
             InputStream inputStream = new ByteArrayInputStream(contentBytes);
 
-            //* Upload the file content
+            // * Upload the file content
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(BUCKET)
@@ -87,8 +86,7 @@ public class ProjectFileServiceImpl implements ProjectFileService {
                             .contentType(determineContentType(filePath))
                             .build());
 
-
-            //* Upload the file metadata
+            // * Upload the file metadata
             ProjectFile file = projectFileRepository.findByProjectIdAndPath(projectId, cleanFilePath)
                     .orElseGet(() -> ProjectFile.builder()
                             .project(project)
@@ -107,10 +105,14 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 
     private String determineContentType(String path) {
         String type = URLConnection.guessContentTypeFromName(path);
-        if (type != null) return type;
-        if (path.endsWith(".jsx") || path.endsWith(".ts") || path.endsWith(".tsx")) return "text/javascript";
-        if (path.endsWith(".json")) return "application/json";
-        if (path.endsWith(".css")) return "text/css";
+        if (type != null)
+            return type;
+        if (path.endsWith(".jsx") || path.endsWith(".ts") || path.endsWith(".tsx"))
+            return "text/javascript";
+        if (path.endsWith(".json"))
+            return "application/json";
+        if (path.endsWith(".css"))
+            return "text/css";
 
         return "text/plain";
     }

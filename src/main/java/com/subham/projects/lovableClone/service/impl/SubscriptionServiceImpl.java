@@ -44,14 +44,21 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public void activateSubscription(Long userId, Long planId, String subscriptionId, String customerId) {
+    public void activateSubscription(Long userId, Long planId, String subscriptionId, String customerId, Instant periodStart, Instant periodEnd) {
         boolean exists = subscriptionRepository.existsByGatewaySubscriptionId(subscriptionId);
         if (exists) return;
 
         User user = getUser(userId);
         Plan plan = getPlan(planId);
 
-        Subscription subscription = Subscription.builder().user(user).plan(plan).gatewaySubscriptionId(subscriptionId).status(SubscriptionStatus.INCOMPLETE).build();
+        Subscription subscription = Subscription.builder()
+                .user(user)
+                .plan(plan)
+                .gatewaySubscriptionId(subscriptionId)
+                .status(SubscriptionStatus.ACTIVE)
+                .currentPeriodStart(periodStart)
+                .currentPeriodEnd(periodEnd)
+                .build();
 
         subscriptionRepository.save(subscription);
     }
@@ -122,6 +129,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         }
 
         return ownedProjects < subscription.plan().maxProjects();
+    }
+
+    @Override
+    public boolean existsByGatewaySubscriptionId(String subscriptionId) {
+        return subscriptionRepository.existsByGatewaySubscriptionId(subscriptionId);
     }
 
     // Utility Methods

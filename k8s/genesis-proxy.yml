@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: proxy
-          image: genesis-proxy:latest
-          imagePullPolicy: IfNotPresent
+          image: sydv3604/genesis-proxy:latest
+          imagePullPolicy: Always
           resources:
             requests:
               cpu: "100m"

@@ -45,11 +45,21 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
     public DeployResponse deploy(Long projectId) {
         String domain = "project-" + projectId + ".app.domain.com";
         Pod existingPod = findAlreadyExistingPod(projectId);
+        Boolean routeExists = Boolean.TRUE.equals(redisTemplate.hasKey("route:" + domain));
 
-        if (existingPod != null) {
+        if (existingPod != null && routeExists) {
             activePreviews.put(projectId, Instant.now());
             registerRoute(domain, existingPod);
             return new DeployResponse("http://" + domain + ":" + REVERSE_PROXY_PORT);
+        } else if (existingPod != null) {
+            log.warn(
+                    "Pod exists for project {} but route is missing in Redis. Cleaning up pod to trigger a fresh deployment.",
+                    projectId);
+            stop(projectId);
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException ignored) {
+            }
         }
 
         DeployResponse response = claimAndStartNewPod(projectId, domain);
@@ -73,25 +83,24 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
             return p;
         });
 
-        //* SYNCER
+        // * SYNCER
         String initialSyncCommand = String.format(
-                "mc mirror --overwrite myminio/lovable/%d/ /app/",
+                "mc mirror --overwrite cloudflareR2/lovable/%d/ /app/",
                 projectId);
         execCommand(podName, SYNCER_CONTAINER, "sh", "-c", initialSyncCommand);
 
         String watchCommand = String.format(
-                "nohup mc mirror --overwrite --watch myminio/lovable/%d/ /app/ < /dev/null > /app/sync.log 2>&1 &", projectId
-        );
+                "nohup sh -c 'while true; do mc mirror --overwrite cloudflareR2/lovable/%d/ /app/; sleep 1; done' < /dev/null > /app/sync.log 2>&1 &",
+                projectId);
         execCommand(podName, SYNCER_CONTAINER, "sh", "-c", watchCommand);
 
-
-        //* RUNNER
+        // * RUNNER
         execCommand(podName, RUNNER_CONTAINER, "sh", "-c", "npm install");
 
         String startCmd = "nohup npm run dev -- --host 0.0.0.0 --port 5173 < /dev/null > /app/dev.log 2>&1 &";
         execCommand(podName, RUNNER_CONTAINER, "sh", "-c", startCmd);
 
-        //* Register the route in redis
+        // * Register the route in redis
         registerRoute(domain, pod);
 
         log.info("Deployment successful http://{}:{}", domain, REVERSE_PROXY_PORT);
@@ -114,7 +123,8 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
             boolean isBackground = commands[commands.length - 1].trim().endsWith("&");
 
             if (isBackground) {
-                // Wait briefly for the background process to start and make sure it doesn't fail instantly
+                // Wait briefly for the background process to start and make sure it doesn't
+                // fail instantly
                 Thread.sleep(1500);
                 watch.close();
                 log.debug("Background command triggered in {}. Output so far: {}", container, out.toString());
@@ -144,7 +154,8 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
 
     private void registerRoute(String domain, Pod pod) {
         String podIp = pod.getStatus().getPodIP();
-        if (podIp == null) throw new RuntimeException("Pod is running but has no ip.");
+        if (podIp == null)
+            throw new RuntimeException("Pod is running but has no ip.");
 
         redisTemplate.opsForValue().set("route:" + domain, podIp + ":5173", 5, TimeUnit.MINUTES);
     }
@@ -179,6 +190,14 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
             }
         }
         activePreviews.remove(projectId);
+    }
+
+    @Override
+    public boolean isDeployed(Long projectId) {
+        String domain = "project-" + projectId + ".app.domain.com";
+        Pod existingPod = findAlreadyExistingPod(projectId);
+        Boolean routeExists = Boolean.TRUE.equals(redisTemplate.hasKey("route:" + domain));
+        return existingPod != null && routeExists;
     }
 
     @Scheduled(fixedDelay = 10000)

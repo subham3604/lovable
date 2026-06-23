@@ -49,10 +49,9 @@ public class StripePaymentProcessor implements PaymentProcessor {
                         SessionCreateParams.LineItem.builder()
                                 .setPrice(plan.getStripePriceId()).setQuantity(1L).build()) // one object -> price
                 .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
-                .setCustomerEmail(user.getUsername())
                 .setSubscriptionData(new SessionCreateParams.SubscriptionData.Builder()
                         .setBillingMode(SessionCreateParams.SubscriptionData.BillingMode.builder().setType(SessionCreateParams.SubscriptionData.BillingMode.Type.FLEXIBLE).build()).build())
-                .setSuccessUrl(frontendUrl + "/success.html?session_id={CHECKOUT_SESSION_ID}").setCancelUrl(frontendUrl + "/cancel.html").putMetadata("user_id", userId.toString()).putMetadata("plan_id", plan.getId().toString());
+                .setSuccessUrl(frontendUrl + "/success?session_id={CHECKOUT_SESSION_ID}").setCancelUrl(frontendUrl + "/cancel").putMetadata("user_id", userId.toString()).putMetadata("plan_id", plan.getId().toString());
         try {
             String stripeCustomerId = user.getGatewayCustomerId();
 
@@ -65,6 +64,27 @@ public class StripePaymentProcessor implements PaymentProcessor {
             Session session = Session.create(params.build());
             return new CheckoutResponse(session.getUrl());
         } catch (StripeException e) {
+            if ("resource_missing".equals(e.getCode()) || (e.getMessage() != null && e.getMessage().contains("No such customer"))) {
+                log.warn("Stale Stripe customer ID found for user {}: {}. Clearing and retrying.", userId, user.getGatewayCustomerId());
+                user.setGatewayCustomerId(null);
+                userRepository.save(user);
+
+                var retryParams = SessionCreateParams.builder().addLineItem(
+                                SessionCreateParams.LineItem.builder()
+                                        .setPrice(plan.getStripePriceId()).setQuantity(1L).build())
+                        .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                        .setSubscriptionData(new SessionCreateParams.SubscriptionData.Builder()
+                                .setBillingMode(SessionCreateParams.SubscriptionData.BillingMode.builder().setType(SessionCreateParams.SubscriptionData.BillingMode.Type.FLEXIBLE).build()).build())
+                        .setSuccessUrl(frontendUrl + "/success?session_id={CHECKOUT_SESSION_ID}").setCancelUrl(frontendUrl + "/cancel").putMetadata("user_id", userId.toString()).putMetadata("plan_id", plan.getId().toString());
+                retryParams.setCustomerEmail(user.getUsername());
+                try {
+                    Session retrySession = Session.create(retryParams.build());
+                    return new CheckoutResponse(retrySession.getUrl());
+                } catch (StripeException retryEx) {
+                    log.error("Stripe Checkout retry failed", retryEx);
+                    throw new BadRequestException("Stripe error: " + retryEx.getMessage());
+                }
+            }
             log.error("Stripe Checkout failed", e);
             throw new BadRequestException("Stripe error: " + e.getMessage());
         }
@@ -129,7 +149,22 @@ public class StripePaymentProcessor implements PaymentProcessor {
             userRepository.save(user);
         }
 
-        subscriptionService.activateSubscription(userId, planId, subscriptionId, customerId);
+        Instant periodStart = null;
+        Instant periodEnd = null;
+        if (subscriptionId != null && !subscriptionId.isEmpty()) {
+            try {
+                Subscription stripeSub = Subscription.retrieve(subscriptionId);
+                if (stripeSub.getItems() != null && !stripeSub.getItems().getData().isEmpty()) {
+                    SubscriptionItem item = stripeSub.getItems().getData().getFirst();
+                    periodStart = toInstant(item.getCurrentPeriodStart());
+                    periodEnd = toInstant(item.getCurrentPeriodEnd());
+                }
+            } catch (StripeException e) {
+                log.error("Failed to retrieve subscription details from Stripe for ID: {}", subscriptionId, e);
+            }
+        }
+
+        subscriptionService.activateSubscription(userId, planId, subscriptionId, customerId, periodStart, periodEnd);
     }
 
     private void handleCustomerSubscriptionUpdated(Subscription subscription) {
@@ -175,7 +210,20 @@ public class StripePaymentProcessor implements PaymentProcessor {
             Instant periodStart = toInstant(item.getCurrentPeriodStart());
             Instant periodEnd = toInstant(item.getCurrentPeriodEnd());
 
-            subscriptionService.renewSubscriptionDate(subId, periodStart, periodEnd);
+            if (!subscriptionService.existsByGatewaySubscriptionId(subId)) {
+                String userIdStr = subscription.getMetadata().get("user_id");
+                String planIdStr = subscription.getMetadata().get("plan_id");
+                if (userIdStr != null && planIdStr != null) {
+                    Long userId = Long.parseLong(userIdStr);
+                    Long planId = Long.parseLong(planIdStr);
+                    String customerId = subscription.getCustomer();
+                    subscriptionService.activateSubscription(userId, planId, subId, customerId, periodStart, periodEnd);
+                } else {
+                    log.warn("Subscription metadata is missing for user_id/plan_id, cannot auto-activate subId: {}", subId);
+                }
+            } else {
+                subscriptionService.renewSubscriptionDate(subId, periodStart, periodEnd);
+            }
 
         } catch (StripeException e) {
             throw new RuntimeException(e);

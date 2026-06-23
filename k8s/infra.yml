@@ -4,20 +4,20 @@ metadata:
   name: genesis-ns
 
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: minio-service
-  namespace: genesis-ns
-spec:
-  type: ExternalName
-  externalName: host.docker.internal # Points to your laptop/host
-  ports:
-    - port: 9000
-      targetPort: 9000
-      protocol: TCP
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: minio-service
+#   namespace: genesis-ns
+# spec:
+#   type: ExternalName
+#   externalName: host.docker.internal # Points to your laptop/host
+#   ports:
+#     - port: 9000
+#       targetPort: 9000
+#       protocol: TCP
 
----
+# ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

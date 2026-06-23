@@ -47,8 +47,18 @@ spec:
           image: minio/mc
           command: ["/bin/sh", "-c", "sleep infinity"]
           env:
-            - name: MC_HOST_myminio
-              value: "http://minioadmin:minioadmin123@minio-service:9000"
+            - name: R2_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: R2_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: MINIO_SECRET_KEY
+            - name: MC_HOST_cloudflareR2
+              value: "https://$(R2_ACCESS_KEY_ID):$(R2_SECRET_ACCESS_KEY)@ead38d510292f1d0c211505e945022c3.r2.cloudflarestorage.com"
           volumeMounts:
             - name: workspace
               mountPath: /app

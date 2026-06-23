@@ -6,15 +6,15 @@ spring:
     active: local
 
   datasource:
-    url: jdbc:postgresql://localhost:5435/pgvector_lovable_test
+    url: jdbc:postgresql://db.ybggislwzccxquzhqjmt.supabase.co:5432/postgres?sslmode=require
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:password}
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   jpa:
     hibernate:
@@ -54,7 +54,7 @@ stripe:
   webhook:
     secret: ${STRIPE_WEBHOOK_SECRET:secret}
 
-client.url: http://localhost:8080
+client.url: ${CLIENT_URL:http://localhost:5173}
 
 logging:
   level:
@@ -62,7 +62,7 @@ logging:
       chat.client: DEBUG
 
 minio:
-  url: http://localhost:9000
+  url: https://ead38d510292f1d0c211505e945022c3.r2.cloudflarestorage.com #http://localhost:9000
   access-key: ${MINIO_ACCESS_KEY:minio}
   secret-key: ${MINIO_SECRET_KEY:minio}
   bucket: lovable
