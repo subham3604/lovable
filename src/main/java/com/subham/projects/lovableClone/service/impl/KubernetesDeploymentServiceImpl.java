@@ -34,23 +34,34 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
     private static final String BUSY = "busy";
     private static final String SYNCER_CONTAINER = "syncer";
     private static final String RUNNER_CONTAINER = "runner";
-    private static final String REVERSE_PROXY_PORT = "8090";
-
     private final Map<Long, Instant> activePreviews = new ConcurrentHashMap<>();
 
     @Value("${app.preview.idle-timeout:5m}")
     private Duration idleTimeout;
 
+    @Value("${app.preview.base-domain:app.domain.com}")
+    private String baseDomain;
+
+    @Value("${app.preview.port:8090}")
+    private String previewPort;
+
+    private String getPreviewUrl(String domain) {
+        if (previewPort == null || previewPort.trim().isEmpty() || "80".equals(previewPort) || "443".equals(previewPort)) {
+            return "http://" + domain;
+        }
+        return "http://" + domain + ":" + previewPort;
+    }
+
     @Override
     public DeployResponse deploy(Long projectId) {
-        String domain = "project-" + projectId + ".app.domain.com";
+        String domain = "project-" + projectId + "." + baseDomain;
         Pod existingPod = findAlreadyExistingPod(projectId);
         Boolean routeExists = Boolean.TRUE.equals(redisTemplate.hasKey("route:" + domain));
 
         if (existingPod != null && routeExists) {
             activePreviews.put(projectId, Instant.now());
             registerRoute(domain, existingPod);
-            return new DeployResponse("http://" + domain + ":" + REVERSE_PROXY_PORT);
+            return new DeployResponse(getPreviewUrl(domain));
         } else if (existingPod != null) {
             log.warn(
                     "Pod exists for project {} but route is missing in Redis. Cleaning up pod to trigger a fresh deployment.",
@@ -103,8 +114,8 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
         // * Register the route in redis
         registerRoute(domain, pod);
 
-        log.info("Deployment successful http://{}:{}", domain, REVERSE_PROXY_PORT);
-        return new DeployResponse("http://" + domain + ":" + REVERSE_PROXY_PORT);
+        log.info("Deployment successful: {}", getPreviewUrl(domain));
+        return new DeployResponse(getPreviewUrl(domain));
     }
 
     private void execCommand(String podName, String container, String... commands) {
@@ -167,7 +178,7 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
         try {
             Pod pod = findAlreadyExistingPod(projectId);
             if (pod != null) {
-                String domain = "project-" + projectId + ".app.domain.com";
+                String domain = "project-" + projectId + "." + baseDomain;
                 registerRoute(domain, pod);
             }
         } catch (Exception e) {
@@ -194,7 +205,7 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
 
     @Override
     public boolean isDeployed(Long projectId) {
-        String domain = "project-" + projectId + ".app.domain.com";
+        String domain = "project-" + projectId + "." + baseDomain;
         Pod existingPod = findAlreadyExistingPod(projectId);
         Boolean routeExists = Boolean.TRUE.equals(redisTemplate.hasKey("route:" + domain));
         return existingPod != null && routeExists;

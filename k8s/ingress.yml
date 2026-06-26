@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: genesis-ingress
+  namespace: genesis-ns
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # Uncomment the following line if using cert-manager for automatic TLS/SSL
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  rules:
+    - host: api.genesis-app.uk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: genesis-backend-svc
+                port:
+                  number: 8080
+    - host: "*.app.genesis-app.uk"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: genesis-proxy-svc
+                port:
+                  number: 80
+# Uncomment the following block once TLS certificates are set up (e.g., using cert-manager)
+#   tls:
+#     - hosts:
+#         - api.genesis-app.uk
+#         - "*.app.genesis-app.uk"
+#       secretName: genesis-tls-secret

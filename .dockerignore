@@ -8,3 +8,8 @@ target/
 .dockerignore
 **/application-local.yaml
 **/application-local.yml
+.idea/
+.vscode/
+mvnw
+mvnw.cmd
+.mvn/

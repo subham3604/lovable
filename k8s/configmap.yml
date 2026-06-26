@@ -5,9 +5,12 @@ metadata:
   namespace: genesis-ns
 data:
   SPRING_PROFILES_ACTIVE: "prod"
-  DB_URL: "jdbc:postgresql://db.ybggislwzccxquzhqjmt.supabase.co:5432/postgres?sslmode=require"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
   REDIS_HOST: "redis-service"
   REDIS_PORT: "6379"
-  CLIENT_URL: "http://localhost:5173"
+  CLIENT_URL: "https://genesis-five-livid.vercel.app"
   MINIO_URL: "https://ead38d510292f1d0c211505e945022c3.r2.cloudflarestorage.com"
   MINIO_BUCKET: "lovable"
+  APP_PREVIEW_BASE_DOMAIN: "app.genesis-app.uk"
+  APP_PREVIEW_PORT: "8090"
+  OPENAI_MODEL: "gpt-4o-mini"

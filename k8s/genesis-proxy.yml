@@ -19,11 +19,11 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "20m"
+              memory: "32Mi"
             limits:
-              cpu: "500m"
-              memory: "256Mi"
+              cpu: "100m"
+              memory: "64Mi"
           env:
             - name: REDIS_URL
               # Refers to the service in the same namespace
@@ -39,7 +39,7 @@ metadata:
   name: genesis-proxy-svc
   namespace: genesis-ns
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 80

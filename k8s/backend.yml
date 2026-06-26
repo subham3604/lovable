@@ -1,24 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: lovable-backend
+  name: genesis-backend
   namespace: genesis-ns
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: lovable-backend
+      app: genesis-backend
   template:
     metadata:
       labels:
-        app: lovable-backend
+        app: genesis-backend
     spec:
+      serviceAccountName: backend-pod-manager-sa
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       containers:
         - name: backend
-          image: sydv3604/lovable-backend:latest
+          image: sydv3604/genesis-backend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
+          env:
+            - name: JDK_JAVA_OPTIONS
+              value: "-Djava.net.preferIPv4Stack=true"
           envFrom:
             - configMapRef:
                 name: backend-config
@@ -26,16 +34,16 @@ spec:
                 name: backend-secrets
           resources:
             requests:
-              cpu: "250m"
-              memory: "512Mi"
+              cpu: "100m"
+              memory: "384Mi"
             limits:
-              cpu: "1000m"
-              memory: "1Gi"
+              cpu: "500m"
+              memory: "512Mi"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: lovable-backend-svc
+  name: genesis-backend-svc
   namespace: genesis-ns
 spec:
   ports:
@@ -43,5 +51,5 @@ spec:
       targetPort: 8080
       protocol: TCP
   selector:
-    app: lovable-backend
+    app: genesis-backend
   type: ClusterIP
