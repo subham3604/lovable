@@ -5,6 +5,8 @@ metadata:
   namespace: genesis-ns
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: genesis-proxy
@@ -19,8 +21,8 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
-              cpu: "20m"
-              memory: "32Mi"
+              cpu: "5m"
+              memory: "16Mi"
             limits:
               cpu: "100m"
               memory: "64Mi"

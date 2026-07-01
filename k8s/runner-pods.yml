@@ -4,7 +4,9 @@ metadata:
   name: runner-pool
   namespace: genesis-ns
 spec:
-  replicas: 2
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: runner
@@ -36,11 +38,11 @@ spec:
             - containerPort: 5173
           resources:
             requests:
-              memory: "256Mi"
+              memory: "128Mi"
               cpu: "100m"
             limits:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "1000m"
 
         # 2. THE SYNCER (File Sync)
         - name: syncer

@@ -1,142 +1,180 @@
-# Lovable Clone: Architecture & Deployment Documentation
+<p align="center">
+  <img src="https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" />
+  <img src="https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" />
+  <img src="https://img.shields.io/badge/Spring_AI-6DB33F?style=for-the-badge&logo=spring&logoColor=white" />
+  <img src="https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white" />
+</p>
 
-This document provides a comprehensive overview of the **Lovable Clone** application architecture, component interactions, runtime environment design, and detailed deployment guidelines.
+# Genesis — AI-Powered React Application Builder
+
+Genesis is an AI-powered React application generator inspired by [Lovable.dev](https://lovable.dev). Users describe what they want to build in plain English, and an AI agent generates a complete React + Vite codebase in real-time. Every project gets its own live preview URL — a real Vite dev server running inside a dynamically provisioned Kubernetes pod, with hot module replacement streaming changes back to the browser instantly.
+
+The backend is built with **Spring Boot** and **Spring AI**, deployed on a **DigitalOcean Kubernetes** cluster. The frontend (React + Vite + Tailwind) lives in a separate repository.
+
+### Why Kubernetes?
+Genesis uses Kubernetes to provide isolated preview environments for each project. Every preview runs inside its own container, allowing users to interact with a real Vite development server rather than a simulated browser sandbox. This enables accurate builds, hot module replacement, and independent lifecycle management for each project preview.
+
+| | Link |
+|---|---|
+| 🌐 **Live Demo** | [genesis-app.uk](https://genesis-app.uk) |
+| 🎨 **Frontend Repo** | [subham3604/lovable-frontend](https://github.com/subham3604/lovable-frontend) |
+| ⚙️ **Backend Repo** | [subham3604/lovable](https://github.com/subham3604/lovable) |
+| 📖 **API Docs (Swagger)** | [api.genesis-app.uk/swagger-ui](https://api.genesis-app.uk/swagger-ui/index.html) |
+
+> *Note: The live demo runs on a single-node development cluster with limited resources (2GB RAM). Additionally, due to API budget limits, the demo uses `gpt-4o-mini`, so code generation quality may be lower than current standards. The model is configurable via `configmap.yml`.*
 
 ---
 
-## 1. System Architecture Diagram
+## System Architecture
 
 ```mermaid
 graph TD
-    Client[Vite Main Frontend] -->|API Calls & Heartbeats| Backend[Spring Boot API Gateway]
-    Client -->|View Preview| Proxy[Node.js Reverse Proxy]
+    Database[("PostgreSQL Database")]
+    Client["Client Browser"]
+    Storage[("Object Storage")]
+
+    Client -->|api.genesis-app.uk| Ingress["NGINX Ingress Controller"]
+    Client -->|project-id.genesis-app.uk| Ingress
     
-    subSubSec[Kubernetes Cluster]
-    
-    subgraph Cluster [Kubernetes genesis-ns]
-        Backend -->|Fabric8 API / Claim & Delete Pods| K8sAPI[K8s Control Plane]
-        Proxy -->|Route Requests| RunnerPod1[Runner Pod: Project A]
+    subgraph Cluster ["Kubernetes genesis-ns namespace"]
+        Ingress -->|Route API Calls| Backend["Spring Boot Backend"]
+        Ingress -->|Route Previews| Proxy["Genesis Proxy"]
         
-        subgraph Pool [runner-pool Deployment]
-            IdlePod1[Idle Pod: status=idle]
-            IdlePod2[Idle Pod: status=idle]
-            RunnerPod1[Claimed Pod: status=busy, project-id=9]
+        Backend -->|Manage Pods| K8sAPI["Kubernetes API (Pod Manager)"]
+        Backend -->|Register Active Pod Routes| Redis[("Redis Route Cache")]
+        
+        Proxy -->|1. Query Pod IP| Redis
+        Proxy -->|2. Forward HTTP and WebSockets| RunnerPod
+        
+        subgraph Pool ["runner-pool Deployment"]
+            IdlePod["Idle Pod status=idle"]
+            RunnerPod["Claimed Pod status=busy project-id"]
+        end
+        
+        subgraph RunnerPodContainers ["Claimed Pod Containers"]
+            RunnerPod -->|Port 5173| Vite["Vite Dev Server"]
+            RunnerPod -->|Sidecar| Syncer["File Syncer Sidecar"]
         end
     end
     
-    Database[(PostgreSQL + pgvector)]
-    Storage[(MinIO / S3 Storage)]
-    
-    Backend -->|Read/Write Metadata| Database
+    Database <-->|Read/Write Metadata| Backend
     Backend -->|Store Project Files| Storage
-    RunnerPod1 -->|Sync Files via mc mirror| Storage
+    Syncer -->|Real-time Sync| Storage
 ```
 
----
-
-## 2. Component Breakdown
-
-### A. Spring Boot Backend
-The core engine of the application, responsible for:
-* **Project Management**: Creation, updating, and membership permissions.
-* **LLM Engine**: Integration with OpenAI via **Spring AI** for code generation.
-* **Dynamic Previews**: Communicating with the Kubernetes API using the Fabric8 client to claim pre-warmed workspace containers, sync code files, and start development servers.
-* **Pod Life Cycle & Reaper**: Monitoring project activity via client heartbeats, and automatically deleting inactive preview pods after a configurable timeout (defaults to 5 minutes).
-* **Billing**: Stripe payment processing and subscription webhook handling.
-
-### B. Kubernetes Runner Pool (`genesis-ns`)
-To provide near-instant sandbox workspace initialization, the system uses a **pre-warmed pool pattern**:
-* **`runner-pool` Deployment**: Maintains a set of replica pods (`status=idle`).
-* **Pod Architecture (Multi-Container)**:
-  * **`syncer` Container** (`minio/mc`): Used by the backend to fetch project source files from MinIO/S3 using the MinIO CLI (`mc mirror`) and watch for modifications (`mc mirror --watch`).
-  * **`runner` Container** (`node:20-alpine`): Houses the node runtime. Runs `npm install` and boots up the Vite development server (`npm run dev`) on port `5173`.
-  * **Shared Volume**: An `emptyDir` volume mounted at `/app` sharing files between the `syncer` and `runner` containers.
-
-### C. Node.js Reverse Proxy
-A proxy service (`ioredis` + `http-proxy`) that intercepts preview requests (e.g. `project-15.app.domain.com:8090`) and dynamically forwards the HTTP traffic to the internal IP address and port of the corresponding claimed runner pod in Kubernetes.
+> For detailed Kubernetes resource tables and pod internals, see [docs/architecture.md](docs/architecture.md).
 
 ---
 
-## 3. Dynamic Deployment Workflow
+## Features
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as User Browser
-    participant API as Spring Boot Backend
-    participant K8s as Kubernetes Cluster
-    participant S3 as MinIO / S3 Storage
+- **AI Code Generation** — Describe your app in plain English and watch the AI generate a complete React codebase in real-time via streaming SSE.
+- **Live Preview** — Every project gets a unique subdomain (`project-{id}.genesis-app.uk`) running a live Vite dev server with hot module replacement.
+- **Project Management** — Full CRUD with role-based collaboration (Owner / Editor / Viewer).
+- **Subscription Billing** — Stripe-powered checkout, customer portal, and usage-based metering.
+- **File Storage** — S3-compatible object storage (Cloudflare R2) with automatic file syncing to runner pods.
+- **Kubernetes Orchestration** — Dynamic pod provisioning from a warm pool, Redis-backed service discovery, and automatic idle cleanup.
+- **Authentication** — Stateless JWT-based auth with email/password signup.
 
-    User->>API: POST /api/projects/{id}/deploy
-    API->>K8s: Find pod with label status=idle
-    K8s-->>API: Return pod name (e.g. runner-pool-xyz)
-    API->>K8s: Label pod status=busy & project-id={id}
-    Note over K8s: Deployment controller detects pool size drop<br/>and spawns a new idle pod.
-    API->>K8s: Exec in 'syncer': mc mirror from S3 to /app
-    API->>K8s: Exec in 'runner': npm install
-    API->>K8s: Exec in 'runner': nohup npm run dev --host 0.0.0.0 &
-    API-->>User: Return DeployResponse (previewUrl)
-    loop Every 30 seconds
-        User->>API: POST /api/projects/{id}/heartbeat
-        Note over API: Update last active timestamp in map
-    end
-    Note over User: User closes browser tab
-    Note over API: Reaper scans map and detects 5 minutes of inactivity
-    API->>K8s: Delete busy pod (grace-period=0)
+---
+
+## How It Works — End to End
+
+### 1. User Creates a Project
+The user creates a new project from the frontend. The backend scaffolds a starter Vite + React + TypeScript template by copying files from a pre-seeded R2 bucket into the project's storage directory, and saves the file tree metadata to PostgreSQL.
+
+### 2. User Sends a Chat Prompt
+The frontend opens an SSE connection to `POST /api/chat/stream`. The backend:
+1. Loads the **full file tree** and injects it into the AI system prompt as context.
+2. Registers a `read_files` **tool** that the AI can call to read any existing project file before making edits.
+3. Streams the AI response token-by-token to the frontend.
+4. On completion, parses the response for file tags, saves edited files to R2 + PostgreSQL, and persists chat history.
+
+### 3. User Deploys the Preview
+When the user clicks "Preview", the backend:
+1. Claims an **idle runner pod** from the pre-warmed Kubernetes pool and labels it as `busy`.
+2. Syncs all project files from R2 into the pod's shared workspace volume.
+3. Starts a continuous background sync to pick up newly AI-generated files.
+4. Runs `npm install && npm run dev` inside the runner container.
+5. Registers the pod's IP in **Redis** and returns the preview URL to the frontend.
+
+### 4. Preview Request Routing
+When the browser navigates to `https://project-{id}.genesis-app.uk`:
+1. **Cloudflare** terminates SSL and proxies to the DigitalOcean node.
+2. **NGINX Ingress** matches the wildcard host and routes to the Genesis Proxy service.
+3. **Genesis Proxy** queries Redis for the pod IP and forwards HTTP + WebSocket traffic to the Vite dev server.
+
+### 5. Idle Cleanup
+A scheduled task runs periodically. If a preview hasn't received a heartbeat within the configured timeout, the pod is released and the Redis route is cleaned up.
+
+---
+
+## Tech Stack
+
+| Category | Technologies |
+|---|---|
+| **Backend** | Java, Spring Boot, Spring AI, Spring Security, Spring Data JPA, Hibernate |
+| **AI** | OpenAI (configurable), tool calling, SSE streaming |
+| **Database** | PostgreSQL, Redis |
+| **Storage** | Cloudflare R2 (S3-compatible) |
+| **Payments** | Stripe |
+| **Infrastructure** | Kubernetes (DigitalOcean DOKS), Docker |
+| **Networking** | NGINX Ingress, Cloudflare DNS/CDN, Let's Encrypt TLS |
+| **Frontend** | React, TypeScript, Vite, Tailwind CSS |
+
+---
+
+## API Overview
+
+Interactive Swagger UI: **[api.genesis-app.uk/swagger-ui](https://api.genesis-app.uk/swagger-ui/index.html)**
+
+| API Group | Description |
+|---|---|
+| **Auth** (`/api/auth`) | JWT login and signup |
+| **Projects** (`/api/projects`) | CRUD, deploy previews, heartbeat |
+| **Chat** (`/api/chat`) | SSE streaming AI code generation |
+| **Files** (`/api/projects/{id}/files`) | File tree and file content retrieval |
+| **Billing** (`/api/plans`, `/api/payments`) | Stripe checkout, portal, webhooks |
+
+> Full endpoint documentation: [docs/api.md](docs/api.md)
+
+---
+
+## Getting Started
+
+```bash
+git clone https://github.com/subham3604/lovable.git
+cd lovable
+./mvnw spring-boot:run
 ```
 
----
-
-## 4. Configuration Properties
-
-### Spring Boot (`application.yaml`)
-
-| Property | Default Value | Description |
-| :--- | :--- | :--- |
-| `app.preview.idle-timeout` | `5m` (5 minutes) | Inactivity duration before the pod is automatically reaped. Set to `30s` locally. |
-| `spring.ai.openai.api-key` | `${OPENAI_API_KEY}` | OpenAI token used for prompt code generations. |
-| `minio.url` | `http://localhost:9000` | S3 endpoint URL. |
-| `minio.bucket` | `lovable` | S3 bucket containing project workspace folders. |
+> [!IMPORTANT]
+> **Full setup guide** (prerequisites, Docker Compose, environment config, frontend integration): [docs/local-development.md](docs/local-development.md)
+>
+> **Production deployment** (Docker build, Kubernetes manifests, environment variables): [docs/deployment.md](docs/deployment.md)
 
 ---
 
-## 5. Deployment Commands Cheat Sheet
+## Scalability & Future Architecture
 
-### Local Setup (Development)
+### Current Horizontal Scalability
+The architecture is designed to handle user growth by horizontally scaling the resource-heavy preview environments and using managed cloud primitives for storage and data persistence:
+- **Runner Pod Pools**: The active and idle sandbox environments can autoscale horizontally via standard Kubernetes Horizontal Pod Autoscaling (HPA) to match concurrent user traffic.
+- **Decoupled State**: Source code files are stored in serverless object storage, and transactional metadata lives in a PostgreSQL database, allowing stateless container restarts and load balancing.
+- **Dynamic Ingress Routing**: The custom routing proxy dynamically routes user subdomains to specific preview environments using Redis caching, avoiding complex routing updates inside the Ingress controller.
 
-1. **Change default namespace**:
-   ```bash
-   kubectl config set-context --current --namespace=genesis-ns
-   ```
-2. **Apply Local Services**:
-   ```bash
-   kubectl apply -f k8s/infra.yml
-   ```
-3. **Deploy Runner Pool**:
-   ```bash
-   kubectl apply -f k8s/runner-pods.yml
-   ```
-4. **Delete and Recreate Namespace (Clean Slate)**:
-   ```bash
-   kubectl delete namespace genesis-ns
-   kubectl create namespace genesis-ns
-   ```
+### Modular Monolith & Microservices Tradeoffs
+The backend currently operates as a **modular monolith**. This simplifies local development, reduces configuration complexity, and minimizes the resource overhead of a multi-service deployment. 
 
-### Production Setup
+However, at massive scale, this monolith introduces key architectural bottlenecks:
+1. **Thread & CPU Contention**: Long-running Server-Sent Events (SSE) connections and heavy token streaming during code generation can compete for request threads and CPU cycles needed by fast transactional endpoints (such as auth and billing).
+2. **Asymmetric Resource Demands**: The components that manage Kubernetes pod orchestration have different scaling profiles and permissions compared to user-facing web endpoints.
 
-1. **Create Kubernetes Secrets**:
-   ```bash
-   kubectl create secret generic lovable-secrets -n genesis-ns \
-     --from-literal=openai-api-key="sk-..." \
-     --from-literal=stripe-secret-key="sk_..." \
-     --from-literal=jwt-secret-key="your-jwt-secret-key"
-   ```
-2. **Build and Push Backend Image**:
-   ```bash
-   docker build -t yourusername/lovable-backend:latest .
-   docker push yourusername/lovable-backend:latest
-   ```
-3. **Deploy Backend to Cluster**:
-   ```bash
-   kubectl apply -f k8s/backend.yml
-   ```
+**Future Extraction Paths**:
+Should scale require it, the system can be decomposed into domain-specific microservices by extracting the **AI Processing Engine** and the **Kubernetes Pod Manager** into independent services. Because the system is already fully containerized and hosted in a Kubernetes namespace, these components can be decoupled incrementally into distinct deployments, enabling independent resource limits and isolated scaling boundaries without disrupting core application logic.
+
+---
+
+## License
+
+This project is for educational and portfolio purposes.

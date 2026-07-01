@@ -4,11 +4,16 @@ metadata:
   name: genesis-ingress
   namespace: genesis-ns
   annotations:
-    kubernetes.io/ingress.class: nginx
     # Uncomment the following line if using cert-manager for automatic TLS/SSL
     # cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/request-buffering: "off"
 spec:
+  ingressClassName: nginx
   rules:
     - host: api.genesis-app.uk
       http:
@@ -20,7 +25,7 @@ spec:
                 name: genesis-backend-svc
                 port:
                   number: 8080
-    - host: "*.app.genesis-app.uk"
+    - host: "*.genesis-app.uk"
       http:
         paths:
           - path: /
@@ -30,9 +35,8 @@ spec:
                 name: genesis-proxy-svc
                 port:
                   number: 80
-# Uncomment the following block once TLS certificates are set up (e.g., using cert-manager)
-#   tls:
-#     - hosts:
-#         - api.genesis-app.uk
-#         - "*.app.genesis-app.uk"
-#       secretName: genesis-tls-secret
+  tls:
+    - hosts:
+        - api.genesis-app.uk
+        - "*.genesis-app.uk"
+      secretName: genesis-tls-secret

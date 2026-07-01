@@ -5,6 +5,8 @@ metadata:
   namespace: genesis-ns
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: genesis-backend
@@ -26,7 +28,7 @@ spec:
             - containerPort: 8080
           env:
             - name: JDK_JAVA_OPTIONS
-              value: "-Djava.net.preferIPv4Stack=true"
+              value: "-Xmx160m -Xms96m -Djava.net.preferIPv4Stack=true"
           envFrom:
             - configMapRef:
                 name: backend-config
@@ -34,8 +36,8 @@ spec:
                 name: backend-secrets
           resources:
             requests:
-              cpu: "100m"
-              memory: "384Mi"
+              cpu: "10m"
+              memory: "256Mi"
             limits:
               cpu: "500m"
               memory: "512Mi"

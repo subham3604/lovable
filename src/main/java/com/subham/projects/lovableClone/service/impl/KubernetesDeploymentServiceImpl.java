@@ -45,11 +45,14 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
     @Value("${app.preview.port:8090}")
     private String previewPort;
 
+    @Value("${app.preview.protocol:http}")
+    private String previewProtocol;
+
     private String getPreviewUrl(String domain) {
         if (previewPort == null || previewPort.trim().isEmpty() || "80".equals(previewPort) || "443".equals(previewPort)) {
-            return "http://" + domain;
+            return previewProtocol + "://" + domain;
         }
-        return "http://" + domain + ":" + previewPort;
+        return previewProtocol + "://" + domain + ":" + previewPort;
     }
 
     @Override
@@ -106,7 +109,7 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
         execCommand(podName, SYNCER_CONTAINER, "sh", "-c", watchCommand);
 
         // * RUNNER
-        execCommand(podName, RUNNER_CONTAINER, "sh", "-c", "npm install");
+        execCommand(podName, RUNNER_CONTAINER, "sh", "-c", "npm install --prefer-offline --no-audit --no-fund --quiet");
 
         String startCmd = "nohup npm run dev -- --host 0.0.0.0 --port 5173 < /dev/null > /app/dev.log 2>&1 &";
         execCommand(podName, RUNNER_CONTAINER, "sh", "-c", startCmd);
