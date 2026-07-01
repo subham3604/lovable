@@ -4,7 +4,9 @@ metadata:
   name: runner-pool
   namespace: genesis-ns
 spec:
-  replicas: 2
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: runner
@@ -36,26 +38,36 @@ spec:
             - containerPort: 5173
           resources:
             requests:
-              memory: "512Mi"
-              cpu: "250m"
+              memory: "128Mi"
+              cpu: "100m"
             limits:
-              memory: "1Gi" # Prevent one user from crashing the node
-              cpu: "1"
+              memory: "512Mi"
+              cpu: "1000m"
 
         # 2. THE SYNCER (File Sync)
         - name: syncer
           image: minio/mc
           command: ["/bin/sh", "-c", "sleep infinity"]
           env:
-            - name: MC_HOST_myminio
-              value: "http://minioadmin:minioadmin123@minio-service:9000"
+            - name: R2_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: R2_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: MINIO_SECRET_KEY
+            - name: MC_HOST_cloudflareR2
+              value: "https://$(R2_ACCESS_KEY_ID):$(R2_SECRET_ACCESS_KEY)@ead38d510292f1d0c211505e945022c3.r2.cloudflarestorage.com"
           volumeMounts:
             - name: workspace
               mountPath: /app
           resources:
             requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
               memory: "64Mi"
               cpu: "50m"
-            limits:
-              memory: "256Mi"
-              cpu: "200m"

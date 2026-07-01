@@ -4,20 +4,20 @@ metadata:
   name: genesis-ns
 
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: minio-service
-  namespace: genesis-ns
-spec:
-  type: ExternalName
-  externalName: host.docker.internal # Points to your laptop/host
-  ports:
-    - port: 9000
-      targetPort: 9000
-      protocol: TCP
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: minio-service
+#   namespace: genesis-ns
+# spec:
+#   type: ExternalName
+#   externalName: host.docker.internal # Points to your laptop/host
+#   ports:
+#     - port: 9000
+#       targetPort: 9000
+#       protocol: TCP
 
----
+# ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,3 +60,36 @@ spec:
       port: 6379
       targetPort: 6379
   type: ClusterIP
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backend-pod-manager-sa
+  namespace: genesis-ns
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-manager-role
+  namespace: genesis-ns
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/exec", "services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-manager-rolebinding
+  namespace: genesis-ns
+subjects:
+  - kind: ServiceAccount
+    name: backend-pod-manager-sa
+    namespace: genesis-ns
+roleRef:
+  kind: Role
+  name: pod-manager-role
+  apiGroup: rbac.authorization.k8s.io

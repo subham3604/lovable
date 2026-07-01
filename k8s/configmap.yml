@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: genesis-ns
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  CLIENT_URL: "https://genesis-app.uk"
+  MINIO_URL: "https://ead38d510292f1d0c211505e945022c3.r2.cloudflarestorage.com"
+  MINIO_BUCKET: "lovable"
+  APP_PREVIEW_BASE_DOMAIN: "genesis-app.uk"
+  APP_PREVIEW_PORT: ""
+  APP_PREVIEW_PROTOCOL: "https"
+  OPENAI_MODEL: "gpt-4o-mini"

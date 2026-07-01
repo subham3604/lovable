@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genesis-backend
+  namespace: genesis-ns
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: genesis-backend
+  template:
+    metadata:
+      labels:
+        app: genesis-backend
+    spec:
+      serviceAccountName: backend-pod-manager-sa
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: backend
+          image: sydv3604/genesis-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: JDK_JAVA_OPTIONS
+              value: "-Xmx160m -Xms96m -Djava.net.preferIPv4Stack=true"
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secrets
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: genesis-backend-svc
+  namespace: genesis-ns
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: genesis-backend
+  type: ClusterIP

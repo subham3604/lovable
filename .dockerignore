@@ -1,0 +1,15 @@
+k8s/
+proxy/
+target/
+.git/
+.mvn/
+*.md
+.gitignore
+.dockerignore
+**/application-local.yaml
+**/application-local.yml
+.idea/
+.vscode/
+mvnw
+mvnw.cmd
+.mvn/

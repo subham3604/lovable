@@ -8,7 +8,7 @@ import java.time.Instant;
 public interface SubscriptionService {
     SubscriptionResponse getCurrentSubscription();
 
-    void activateSubscription(Long userId, Long planId, String subscriptionId, String customerId);
+    void activateSubscription(Long userId, Long planId, String subscriptionId, String customerId, Instant periodStart, Instant periodEnd);
 
     void updateSubscription(String subscriptionId, SubscriptionStatus status, Instant periodStart, Instant periodEnd, Boolean cancelAtPeriodEnd, Long planId);
 
@@ -17,6 +17,8 @@ public interface SubscriptionService {
     void renewSubscriptionDate(String subscriptionId, Instant periodStart, Instant periodEnd);
 
     void markSubscriptionStatusPastDue(String subscriptionId);
+
+    boolean existsByGatewaySubscriptionId(String subscriptionId);
 
     boolean canCreateNewProject();
 }

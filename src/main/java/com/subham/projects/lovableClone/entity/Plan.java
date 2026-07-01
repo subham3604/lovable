@@ -13,7 +13,6 @@ import lombok.experimental.FieldDefaults;
 public class Plan {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
     String name;

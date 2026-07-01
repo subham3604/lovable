@@ -34,21 +34,46 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
     private static final String BUSY = "busy";
     private static final String SYNCER_CONTAINER = "syncer";
     private static final String RUNNER_CONTAINER = "runner";
-    private static final String REVERSE_PROXY_PORT = "8090";
-
     private final Map<Long, Instant> activePreviews = new ConcurrentHashMap<>();
 
     @Value("${app.preview.idle-timeout:5m}")
     private Duration idleTimeout;
 
+    @Value("${app.preview.base-domain:app.domain.com}")
+    private String baseDomain;
+
+    @Value("${app.preview.port:8090}")
+    private String previewPort;
+
+    @Value("${app.preview.protocol:http}")
+    private String previewProtocol;
+
+    private String getPreviewUrl(String domain) {
+        if (previewPort == null || previewPort.trim().isEmpty() || "80".equals(previewPort) || "443".equals(previewPort)) {
+            return previewProtocol + "://" + domain;
+        }
+        return previewProtocol + "://" + domain + ":" + previewPort;
+    }
+
     @Override
     public DeployResponse deploy(Long projectId) {
-        String domain = "project-" + projectId + ".app.domain.com";
+        String domain = "project-" + projectId + "." + baseDomain;
         Pod existingPod = findAlreadyExistingPod(projectId);
+        Boolean routeExists = Boolean.TRUE.equals(redisTemplate.hasKey("route:" + domain));
 
-        if (existingPod != null) {
+        if (existingPod != null && routeExists) {
             activePreviews.put(projectId, Instant.now());
-            return new DeployResponse("http://" + domain + ":" + REVERSE_PROXY_PORT);
+            registerRoute(domain, existingPod);
+            return new DeployResponse(getPreviewUrl(domain));
+        } else if (existingPod != null) {
+            log.warn(
+                    "Pod exists for project {} but route is missing in Redis. Cleaning up pod to trigger a fresh deployment.",
+                    projectId);
+            stop(projectId);
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException ignored) {
+            }
         }
 
         DeployResponse response = claimAndStartNewPod(projectId, domain);
@@ -72,29 +97,28 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
             return p;
         });
 
-        //* SYNCER
+        // * SYNCER
         String initialSyncCommand = String.format(
-                "mc mirror --overwrite myminio/lovable/%d/ /app/",
+                "mc mirror --overwrite cloudflareR2/lovable/%d/ /app/",
                 projectId);
         execCommand(podName, SYNCER_CONTAINER, "sh", "-c", initialSyncCommand);
 
         String watchCommand = String.format(
-                "nohup mc mirror --overwrite --watch myminio/lovable/%d/ /app/ < /dev/null > /app/sync.log 2>&1 &", projectId
-        );
+                "nohup sh -c 'while true; do mc mirror --overwrite cloudflareR2/lovable/%d/ /app/; sleep 1; done' < /dev/null > /app/sync.log 2>&1 &",
+                projectId);
         execCommand(podName, SYNCER_CONTAINER, "sh", "-c", watchCommand);
 
-
-        //* RUNNER
-        execCommand(podName, RUNNER_CONTAINER, "sh", "-c", "npm install");
+        // * RUNNER
+        execCommand(podName, RUNNER_CONTAINER, "sh", "-c", "npm install --prefer-offline --no-audit --no-fund --quiet");
 
         String startCmd = "nohup npm run dev -- --host 0.0.0.0 --port 5173 < /dev/null > /app/dev.log 2>&1 &";
         execCommand(podName, RUNNER_CONTAINER, "sh", "-c", startCmd);
 
-        //* Register the route in redis
+        // * Register the route in redis
         registerRoute(domain, pod);
 
-        log.info("Deployment successful http://{}:{}", domain, REVERSE_PROXY_PORT);
-        return new DeployResponse("http://" + domain + ":" + REVERSE_PROXY_PORT);
+        log.info("Deployment successful: {}", getPreviewUrl(domain));
+        return new DeployResponse(getPreviewUrl(domain));
     }
 
     private void execCommand(String podName, String container, String... commands) {
@@ -113,7 +137,8 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
             boolean isBackground = commands[commands.length - 1].trim().endsWith("&");
 
             if (isBackground) {
-                // Wait briefly for the background process to start and make sure it doesn't fail instantly
+                // Wait briefly for the background process to start and make sure it doesn't
+                // fail instantly
                 Thread.sleep(1500);
                 watch.close();
                 log.debug("Background command triggered in {}. Output so far: {}", container, out.toString());
@@ -143,7 +168,8 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
 
     private void registerRoute(String domain, Pod pod) {
         String podIp = pod.getStatus().getPodIP();
-        if (podIp == null) throw new RuntimeException("Pod is running but has no ip.");
+        if (podIp == null)
+            throw new RuntimeException("Pod is running but has no ip.");
 
         redisTemplate.opsForValue().set("route:" + domain, podIp + ":5173", 5, TimeUnit.MINUTES);
     }
@@ -152,6 +178,15 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
     public void keepAlive(Long projectId) {
         log.debug("Heartbeat received for project {}", projectId);
         activePreviews.put(projectId, Instant.now());
+        try {
+            Pod pod = findAlreadyExistingPod(projectId);
+            if (pod != null) {
+                String domain = "project-" + projectId + "." + baseDomain;
+                registerRoute(domain, pod);
+            }
+        } catch (Exception e) {
+            log.error("Failed to refresh Redis route during heartbeat for project {}", projectId, e);
+        }
     }
 
     @Override
@@ -169,6 +204,14 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
             }
         }
         activePreviews.remove(projectId);
+    }
+
+    @Override
+    public boolean isDeployed(Long projectId) {
+        String domain = "project-" + projectId + "." + baseDomain;
+        Pod existingPod = findAlreadyExistingPod(projectId);
+        Boolean routeExists = Boolean.TRUE.equals(redisTemplate.hasKey("route:" + domain));
+        return existingPod != null && routeExists;
     }
 
     @Scheduled(fixedDelay = 10000)

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -64,12 +65,13 @@ public class ProjectController {
         deploymentService.stop(id);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/{id}/preview-status")
+    public ResponseEntity<Map<String, Object>> getPreviewStatus(@PathVariable Long id) {
+        boolean isDeployed = deploymentService.isDeployed(id);
+        return ResponseEntity.ok(Map.of("deployed", isDeployed));
+    }
 }
-
-
-
-
-
 
 
 
